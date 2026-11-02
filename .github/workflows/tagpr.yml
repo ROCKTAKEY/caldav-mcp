@@ -17,6 +17,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
     timeout-minutes: 15
+    outputs:
+      tag: ${{ steps.tagpr.outputs.tag }}
     permissions:
       contents: write
       pull-requests: write
@@ -44,3 +46,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_BRANCH: ${{ fromJSON(steps.tagpr.outputs.pull_request).head.ref }}
         run: gh workflow run ci.yml --ref "$RELEASE_BRANCH"
+
+  release-binaries:
+    needs: tagpr
+    if: needs.tagpr.outputs.tag != ''
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tagpr.outputs.tag }}
