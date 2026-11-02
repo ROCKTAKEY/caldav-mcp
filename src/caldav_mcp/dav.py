@@ -9,8 +9,8 @@ import httpx
 from defusedxml.common import DefusedXmlException
 from defusedxml.ElementTree import fromstring
 
-from .errors import CalendarError
-from .models import AccountConfig
+from caldav_mcp.accounts import AccountConfig
+from caldav_mcp.errors import CalendarError
 
 D = "DAV:"
 C = "urn:ietf:params:xml:ns:caldav"

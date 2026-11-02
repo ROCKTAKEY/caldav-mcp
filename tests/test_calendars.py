@@ -1,8 +1,8 @@
 import pytest
 
-from caldav_mcp.calendars import Calendars
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import CalendarProperties, NewCalendar
 from caldav_mcp.dav import DavClient
-from caldav_mcp.models import CalendarProperties, NewCalendar
 
 
 @pytest.mark.asyncio

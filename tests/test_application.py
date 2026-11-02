@@ -3,7 +3,9 @@ from uuid import uuid4
 import pytest
 
 from caldav_mcp.application import Application
-from caldav_mcp.models import CalendarRef, ItemPatch, NewCalendar, NewItem, Period, Search
+from caldav_mcp.calendars.models import CalendarRef, NewCalendar
+from caldav_mcp.items.models import ItemPatch, NewItem, Search
+from caldav_mcp.temporal import Period
 
 
 @pytest.mark.asyncio

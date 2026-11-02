@@ -2,11 +2,12 @@ from uuid import uuid4
 
 import pytest
 
-from caldav_mcp.calendars import Calendars
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import CalendarRef, NewCalendar
 from caldav_mcp.dav import DavClient
 from caldav_mcp.errors import CalendarError
-from caldav_mcp.items_dav import Items
-from caldav_mcp.models import CalendarRef, ItemPatch, NewCalendar, NewItem, Search
+from caldav_mcp.items.dav import Items
+from caldav_mcp.items.models import ItemPatch, NewItem, Search
 from caldav_mcp.sharing import Sharing
 
 

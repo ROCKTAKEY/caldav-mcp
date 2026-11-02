@@ -2,11 +2,12 @@ from uuid import uuid4
 
 import pytest
 
-from caldav_mcp.calendars import Calendars
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import NewCalendar
 from caldav_mcp.dav import DavClient
 from caldav_mcp.errors import CalendarError
-from caldav_mcp.items_dav import Items
-from caldav_mcp.models import ItemPatch, NewCalendar, NewItem, Search, SeriesScope
+from caldav_mcp.items.dav import Items
+from caldav_mcp.items.models import ItemPatch, NewItem, Search, SeriesScope
 
 
 @pytest.mark.asyncio
@@ -48,7 +49,8 @@ async def test_task_crud_conflicts_and_complete_reopen(settings):
 
 @pytest.mark.asyncio
 async def test_recurrence_and_advanced_fields_roundtrip_radicale(settings):
-    from caldav_mcp.models import OccurrenceScope, Period, UtcValue
+    from caldav_mcp.items.models import OccurrenceScope
+    from caldav_mcp.temporal import Period, UtcValue
 
     client = DavClient(settings.accounts[0])
     calendars, items = Calendars(client), Items(Calendars(client))

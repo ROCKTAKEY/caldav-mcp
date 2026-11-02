@@ -1,9 +1,9 @@
 from typing import Any, Literal
 from urllib.parse import unquote, urlsplit
 
-from .calendars import Calendars
-from .errors import CalendarError
-from .models import CalendarRef
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import CalendarRef
+from caldav_mcp.errors import CalendarError
 
 Access = Literal["read", "read_write", "free_busy"]
 

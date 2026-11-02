@@ -3,11 +3,12 @@ from typing import Any
 
 from icalendar import Calendar
 
-from .calendars import Calendars
-from .dav import C, element, xml
-from .errors import CalendarError
-from .items_dav import dav_time
-from .models import CalendarRef, Period
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import CalendarRef
+from caldav_mcp.dav import C, element, xml
+from caldav_mcp.errors import CalendarError
+from caldav_mcp.items.dav import dav_time
+from caldav_mcp.temporal import Period
 
 
 def free_intervals(period: Period, busy: list[tuple[datetime, datetime]]) -> list[dict[str, str]]:

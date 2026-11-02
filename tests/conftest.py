@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from caldav_mcp.models import AccountConfig, Settings
+from caldav_mcp.accounts import AccountConfig, Settings
 
 
 @pytest.fixture(scope="session")

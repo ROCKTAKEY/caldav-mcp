@@ -3,10 +3,12 @@ from uuid import uuid4
 import pytest
 
 from caldav_mcp.availability import Availability
-from caldav_mcp.calendars import Calendars
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import NewCalendar
 from caldav_mcp.dav import DavClient
-from caldav_mcp.items_dav import Items
-from caldav_mcp.models import ItemPatch, NewCalendar, NewItem, Period
+from caldav_mcp.items.dav import Items
+from caldav_mcp.items.models import ItemPatch, NewItem
+from caldav_mcp.temporal import Period
 
 
 @pytest.mark.asyncio

@@ -6,9 +6,10 @@ from zoneinfo import ZoneInfo
 
 from icalendar import Calendar, Timezone
 
-from .dav import A, C, D, DavClient, Properties, element, properties, tag, xml
-from .errors import CalendarError
-from .models import CalendarProperties, CalendarRef, Model, NewCalendar
+from caldav_mcp.calendars.models import CalendarProperties, CalendarRef, NewCalendar
+from caldav_mcp.contracts import Model
+from caldav_mcp.dav import A, C, D, DavClient, Properties, element, properties, tag, xml
+from caldav_mcp.errors import CalendarError
 
 CALENDAR_PROPERTIES = [
     tag(C, "calendar-timezone"),

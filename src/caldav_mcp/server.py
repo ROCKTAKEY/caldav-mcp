@@ -14,24 +14,14 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import ValidationError
 
-from .application import Application, describe
-from .errors import CalendarError
-from .items import members
-from .models import (
-    CalendarProperties,
-    CalendarRef,
-    ComponentKind,
-    ItemPatch,
-    NewCalendar,
-    NewItem,
-    Period,
-    ResourceRef,
-    Revision,
-    Scope,
-    Search,
-    Settings,
-)
-from .sharing import Access
+from caldav_mcp.accounts import Settings
+from caldav_mcp.application import Application, describe
+from caldav_mcp.calendars.models import CalendarProperties, CalendarRef, ComponentKind, NewCalendar
+from caldav_mcp.errors import CalendarError
+from caldav_mcp.items.domain import members
+from caldav_mcp.items.models import ItemPatch, NewItem, ResourceRef, Revision, Scope, Search
+from caldav_mcp.sharing import Access
+from caldav_mcp.temporal import Period
 
 
 def tool(

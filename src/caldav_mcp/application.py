@@ -2,24 +2,23 @@ import asyncio
 from datetime import datetime
 from typing import Any
 
-from .availability import Availability, free_intervals
-from .calendars import Calendars
-from .dav import DavClient
-from .errors import CalendarError
-from .items import EditedItem, RetrievedItem, describe_component, members, remove_occurrence
-from .items_dav import Items
-from .models import (
-    CalendarRef,
-    ItemPatch,
-    OccurrenceScope,
-    Period,
-    ResourceRef,
-    Revision,
-    Scope,
-    Search,
-    Settings,
+from caldav_mcp.accounts import Settings
+from caldav_mcp.availability import Availability, free_intervals
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import CalendarRef
+from caldav_mcp.dav import DavClient
+from caldav_mcp.errors import CalendarError
+from caldav_mcp.items.dav import Items
+from caldav_mcp.items.domain import (
+    EditedItem,
+    RetrievedItem,
+    describe_component,
+    members,
+    remove_occurrence,
 )
-from .sharing import Sharing
+from caldav_mcp.items.models import ItemPatch, OccurrenceScope, ResourceRef, Revision, Scope, Search
+from caldav_mcp.sharing import Sharing
+from caldav_mcp.temporal import Period
 
 
 class Application:

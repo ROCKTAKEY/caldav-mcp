@@ -1,9 +1,9 @@
 import httpx
 import pytest
 
+from caldav_mcp.accounts import AccountConfig
 from caldav_mcp.dav import C, D, DavClient, properties
 from caldav_mcp.errors import CalendarError
-from caldav_mcp.models import AccountConfig
 
 
 @pytest.mark.asyncio

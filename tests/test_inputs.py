@@ -3,7 +3,8 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from caldav_mcp.models import AccountConfig, DateValue, FloatingValue, Period, ZonedValue
+from caldav_mcp.accounts import AccountConfig
+from caldav_mcp.temporal import DateValue, FloatingValue, Period, ZonedValue
 
 
 def test_calendar_dates_keep_their_meaning():

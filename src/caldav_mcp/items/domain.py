@@ -7,8 +7,15 @@ import recurring_ical_events
 from dateutil.rrule import rrulestr
 from icalendar import Alarm, Calendar, Component, Event, Journal, Todo, vRecur
 
-from .errors import CalendarError
-from .models import ItemPatch, NewItem, OccurrenceScope, ResourceRef, Revision, Scope
+from caldav_mcp.errors import CalendarError
+from caldav_mcp.items.models import (
+    ItemPatch,
+    NewItem,
+    OccurrenceScope,
+    ResourceRef,
+    Revision,
+    Scope,
+)
 
 
 @dataclass(frozen=True)

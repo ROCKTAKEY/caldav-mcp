@@ -1,3 +1,3 @@
-from .server import main
+from caldav_mcp.server import main
 
 main()

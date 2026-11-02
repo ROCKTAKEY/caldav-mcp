@@ -8,10 +8,11 @@ from zoneinfo import ZoneInfo
 from icalendar import Calendar, Timezone
 from pydantic import ValidationError
 
-from .calendars import Calendars
-from .dav import C, D, element, properties, tag, xml
-from .errors import CalendarError
-from .items import (
+from caldav_mcp.calendars.dav import Calendars
+from caldav_mcp.calendars.models import CalendarRef
+from caldav_mcp.dav import C, D, element, properties, tag, xml
+from caldav_mcp.errors import CalendarError
+from caldav_mcp.items.domain import (
     EditedItem,
     RetrievedItem,
     create_document,
@@ -19,7 +20,7 @@ from .items import (
     members,
     parse_document,
 )
-from .models import CalendarRef, NewItem, ResourceRef, Revision, Search
+from caldav_mcp.items.models import NewItem, ResourceRef, Revision, Search
 
 
 def dav_time(value: datetime) -> str:

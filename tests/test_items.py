@@ -4,8 +4,9 @@ import pytest
 from icalendar import Calendar
 
 from caldav_mcp.errors import CalendarError
-from caldav_mcp.items import create_document, edit_document, remove_occurrence
-from caldav_mcp.models import ItemPatch, NewItem, OccurrenceScope, SeriesScope, UtcValue
+from caldav_mcp.items.domain import create_document, edit_document, remove_occurrence
+from caldav_mcp.items.models import ItemPatch, NewItem, OccurrenceScope, SeriesScope
+from caldav_mcp.temporal import UtcValue
 
 
 def new_event():
@@ -125,7 +126,7 @@ def test_patch_omission_and_explicit_removal_are_distinct():
 def test_radicale_unsupported_future_scope_is_rejected_at_boundary():
     from pydantic import TypeAdapter, ValidationError
 
-    from caldav_mcp.models import Scope
+    from caldav_mcp.items.models import Scope
 
     with pytest.raises(ValidationError):
         TypeAdapter(Scope).validate_python(
