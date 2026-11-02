@@ -21,8 +21,8 @@ def tag(namespace: str, name: str) -> str:
     return f"{{{namespace}}}{name}"
 
 
-def element(namespace: str, name: str, text: str | None = None, **attrs: str) -> Element:
-    node = Element(tag(namespace, name), attrs)
+def element(namespace: str, local_name: str, text: str | None = None, **attrs: str) -> Element:
+    node = Element(tag(namespace, local_name), attrs)
     node.text = text
     return node
 
@@ -137,7 +137,11 @@ class DavClient:
                         )
                 result = httpx.Response(
                     response.status_code,
-                    headers=response.headers,
+                    headers={
+                        k: v
+                        for k, v in response.headers.items()
+                        if k not in ("content-encoding", "content-length")
+                    },
                     content=bytes(chunks),
                     request=response.request,
                 )
