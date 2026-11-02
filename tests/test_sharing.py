@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import pytest
 
+from caldav_mcp.availability import Availability
 from caldav_mcp.calendars.dav import Calendars
 from caldav_mcp.calendars.models import CalendarRef, NewCalendar
 from caldav_mcp.dav import DavClient
@@ -9,6 +10,7 @@ from caldav_mcp.errors import CalendarError
 from caldav_mcp.items.dav import Items
 from caldav_mcp.items.models import ItemPatch, NewItem, Search
 from caldav_mcp.sharing import Sharing
+from caldav_mcp.temporal import Period
 
 
 @pytest.mark.asyncio
@@ -47,6 +49,27 @@ async def test_radicale_share_accept_read_write_revoke(settings):
             )
             == 2
         )
+        await Items(owner).create(
+            source.ref,
+            NewItem(
+                kind="VEVENT",
+                uid=str(uuid4()),
+                fields=ItemPatch(
+                    summary="Owner secret",
+                    start={"kind": "utc", "value": "2026-11-02T10:00:00Z"},
+                    end={"kind": "utc", "value": "2026-11-02T11:00:00Z"},
+                ),
+            ),
+        )
+        await owner_shares.update(path, access="free_busy")
+        busy = await Availability(recipient).query(
+            shared, Period(start="2026-11-02T09:00:00Z", end="2026-11-02T12:00:00Z")
+        )
+        assert len(busy["busy"]) == 1
+        assert "Owner secret" not in str(busy)
+        with pytest.raises(CalendarError) as details_denied:
+            await Items(recipient).search(shared, query)
+        assert details_denied.value.code == "forbidden"
         await owner_shares.delete(path)
         with pytest.raises(CalendarError):
             await recipient.get(shared)

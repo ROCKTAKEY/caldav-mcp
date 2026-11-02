@@ -67,3 +67,39 @@ async def test_stdio_handshake_and_tool_call(settings, tmp_path):
             assert bad.isError
             assert bad.structuredContent["error"]["code"] == "unknown_account"
             assert "alice-pass" not in json.dumps(result.structuredContent)
+
+            created_calendar = await session.call_tool(
+                "create_calendar", {"spec": {"account": "alice", "name": "MCP integration"}}
+            )
+            assert not created_calendar.isError, created_calendar
+            ref = created_calendar.structuredContent["ref"]
+            created = await session.call_tool(
+                "create_task",
+                {
+                    "calendar": ref,
+                    "uid": "mcp-task",
+                    "fields": {
+                        "summary": "Buy tea",
+                        "due": {"kind": "date", "value": "2026-11-09"},
+                    },
+                },
+            )
+            assert not created.isError, created
+            item = created.structuredContent
+            completed = await session.call_tool(
+                "complete_task",
+                {"ref": item["ref"], "revision": item["revision"], "scope": {"kind": "series"}},
+            )
+            assert not completed.isError, completed
+            assert completed.structuredContent["components"][0]["status"] == "COMPLETED"
+            deleted = await session.call_tool(
+                "delete_item",
+                {
+                    "ref": item["ref"],
+                    "revision": completed.structuredContent["revision"],
+                    "scope": {"kind": "series"},
+                },
+            )
+            assert not deleted.isError, deleted
+            removed_calendar = await session.call_tool("delete_calendar", {"calendar": ref})
+            assert not removed_calendar.isError, removed_calendar

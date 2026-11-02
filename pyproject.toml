@@ -6,10 +6,11 @@ build-backend = "hatchling.build"
 name = "caldav-mcp"
 version = "0.1.0"
 description = "Stateless multi-account CalDAV tools for local language models"
+readme = "README.md"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 dependencies = [
-  "mcp>=1.20,<2", "icalendar>=6,<8", "recurring-ical-events>=3,<4",
+  "mcp>=1.30,<2", "icalendar>=7.3,<8", "recurring-ical-events>=3.8.2,<4",
   "httpx>=0.28,<1", "defusedxml>=0.7,<1", "pydantic>=2.10,<3",
 ]
 
@@ -23,7 +24,7 @@ dev = [
     "ruff>=0.14",
     "mypy>=1.18",
     "types-defusedxml",
-    "radicale>=3.5,<4",
+    "radicale>=3.9,<4",
     "types-python-dateutil>=2.9.0.20261029",
 ]
 

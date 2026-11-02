@@ -133,10 +133,10 @@ dev = [
 requires-dist = [
     { name = "defusedxml", specifier = ">=0.7,<1" },
     { name = "httpx", specifier = ">=0.28,<1" },
-    { name = "icalendar", specifier = ">=6,<8" },
-    { name = "mcp", specifier = ">=1.20,<2" },
+    { name = "icalendar", specifier = ">=7.3,<8" },
+    { name = "mcp", specifier = ">=1.30,<2" },
     { name = "pydantic", specifier = ">=2.10,<3" },
-    { name = "recurring-ical-events", specifier = ">=3,<4" },
+    { name = "recurring-ical-events", specifier = ">=3.8.2,<4" },
 ]
 
 [package.metadata.requires-dev]
@@ -144,7 +144,7 @@ dev = [
     { name = "mypy", specifier = ">=1.18" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-asyncio", specifier = ">=1" },
-    { name = "radicale", specifier = ">=3.5,<4" },
+    { name = "radicale", specifier = ">=3.9,<4" },
     { name = "ruff", specifier = ">=0.14" },
     { name = "types-defusedxml" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20261029" },
