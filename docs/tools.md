@@ -98,7 +98,7 @@
 
 `recurrence_dates` は追加開催日、`exception_dates` は除外日です。日時の種類は開始と一致させます。`recurrence_rule` はRFC 5545のRRULE文字列です。`COUNT` と `UNTIL` の併用や、0以下の `INTERVAL` は拒否します。
 
-`search_events(expand=true)` で個別回を取得できます。`update_item` の `scope` には、結果の `recurrence_id` を指定します。
+`search_events(expand=true)` でサーバが展開した個別回を取得できます。Radicale 3.9.0の `THISANDFUTURE` 展開には[READMEの制約](../README.md#更新検索の意味)があります。`update_item` の `scope` には、結果の `recurrence_id` を指定します。
 
 ```json
 {

@@ -46,6 +46,28 @@ async fn calendar_task_lifecycle_and_conflict_detection() {
         .unwrap();
     assert_eq!(found["items"].as_array().unwrap().len(), 1);
     assert_eq!(found["complete"], true);
+    let service = s.app.items("alice").unwrap();
+    let target = serde_json::from_value(reopened["ref"].clone()).unwrap();
+    let first = service.get(target).await.unwrap();
+    let second = service
+        .get(serde_json::from_value(reopened["ref"].clone()).unwrap())
+        .await
+        .unwrap();
+    let patch = serde_json::from_value(json!({"summary":"Concurrent update"})).unwrap();
+    let scope = caldav_mcp::items::models::Scope::Series;
+    let latest = service
+        .save(first.edit(&patch, &scope).unwrap())
+        .await
+        .unwrap()
+        .describe()
+        .unwrap();
+    let conflict = service.save(second.edit(&patch, &scope).unwrap()).await;
+    assert!(matches!(conflict,Err(ref e) if e.code=="conflict"));
+    let reopened = s
+        .app
+        .invoke("get_item", json!({"ref":latest["ref"]}))
+        .await
+        .unwrap();
     s.app.invoke("delete_item",json!({"ref":reopened["ref"],"revision":reopened["revision"],"scope":{"kind":"series"}})).await.unwrap();
     s.app
         .invoke("delete_calendar", json!({"calendar":calendar}))

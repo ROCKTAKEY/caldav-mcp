@@ -1,5 +1,6 @@
 use super::{
-    document::{Component, Document},
+    document::Document,
+    ical::Component,
     models::{Change, ItemPatch, Scope},
 };
 use crate::{
@@ -141,11 +142,16 @@ impl Document {
         }
         let mut c = master.clone();
         let next_start = start.at_instant(target.instant())?;
-        let delta = next_start.local() - start.local();
         c.set_time("DTSTART", &next_start)?;
         for n in ["DTEND", "DUE"] {
             if let Some(end) = master.time(n)? {
-                c.set_time(n, &end.add_wall(delta)?)?;
+                // DTEND/DUE imply exact duration, even when the master crosses DST.
+                // https://www.rfc-editor.org/rfc/rfc5545.html#section-3.8.5.3
+                let finish = next_start
+                    .instant()
+                    .checked_add_signed(end.instant() - start.instant())
+                    .ok_or_else(|| Error::input("Recurrence end overflows supported dates"))?;
+                c.set_time(n, &end.at_instant(finish)?)?;
             }
         }
         c.set_time("RECURRENCE-ID", &next_start)?;

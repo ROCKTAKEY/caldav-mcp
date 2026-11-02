@@ -103,26 +103,6 @@ impl TimeValue {
         };
         raw.try_into()
     }
-    pub fn add_wall(&self, delta: Duration) -> Result<Self> {
-        let local = self
-            .local()
-            .checked_add_signed(delta)
-            .ok_or_else(|| Error::input("Date overflow"))?;
-        let raw = match &self.0 {
-            TimeInput::Date { .. } => TimeInput::Date {
-                value: local.date(),
-            },
-            TimeInput::Floating { .. } => TimeInput::Floating { value: local },
-            TimeInput::Utc { .. } => TimeInput::Utc {
-                value: local.and_utc(),
-            },
-            TimeInput::Zoned { timezone, .. } => TimeInput::Zoned {
-                value: local,
-                timezone: timezone.clone(),
-            },
-        };
-        raw.try_into()
-    }
     pub fn ical(&self) -> (String, String) {
         match &self.0 {
             TimeInput::Date { value } => (";VALUE=DATE".into(), value.format("%Y%m%d").to_string()),

@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 description = "Stateless multi-account CalDAV MCP server"
+repository = "https://github.com/ROCKTAKEY/caldav-mcp"
+readme = "README.md"
+include = ["/Cargo.toml", "/Cargo.lock", "/src/**/*.rs", "/README.md", "/LICENSE", "/docs/*.md", "/examples/*.toml", "/tests/**/*.rs", "/tests/requirements.txt", "/manifest.scm", "/scripts/*.sh"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }

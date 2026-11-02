@@ -5,3 +5,5 @@ mod recurrence;
 pub mod timezones;
 
 pub mod service;
+
+pub mod ical;

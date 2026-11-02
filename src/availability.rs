@@ -2,7 +2,7 @@ use crate::{
     calendars::{CalendarRef, Calendars},
     dav::envelope,
     error::{Error, Result},
-    items::document::Component,
+    items::ical::Component,
     temporal::{Period, TimeValue, dav_time, duration},
 };
 use chrono::{DateTime, Utc};

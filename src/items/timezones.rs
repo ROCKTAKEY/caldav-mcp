@@ -1,4 +1,4 @@
-use super::document::{Component, Document};
+use super::{document::Document, ical::Component};
 use crate::error::{Error, Result};
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 
@@ -63,7 +63,7 @@ fn observance(t: DateTime<Utc>, from: i32, to: i32, dst: bool, name: &str) -> Re
     )?;
     c.set("TZOFFSETFROM", &offset(from))?;
     c.set("TZOFFSETTO", &offset(to))?;
-    c.set("TZNAME", &super::document::escape(name))?;
+    c.set("TZNAME", &super::ical::escape(name))?;
     Ok(c)
 }
 pub fn timezone_document(name: &str) -> Result<String> {

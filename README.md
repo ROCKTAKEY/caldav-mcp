@@ -20,17 +20,17 @@
 
 ## 導入
 
-Python 3.12以降とuvを使用します。リポジトリのルートで実行します。
+Rustのstable toolchainとCargoを使用します（Rust 1.98.1で検証）。リポジトリのルートで実行します。実行時にPythonは必要ありません。
 
 ```sh
-uv sync --frozen --no-dev
+cargo build --release --locked
 cp examples/config.toml config.toml
 ```
 
 [設定例](examples/config.toml)のURL、ユーザー名、アカウントIDを変更します。パスワードは、MCPホストから子プロセスへ引き継ぐ環境変数に設定します。`password_env` は値ではなく環境変数名です。認証情報をツールの引数としてLLMに渡す必要はありません。
 
 ```sh
-uv run --frozen --no-dev caldav-mcp --config /absolute/path/to/config.toml
+./target/release/caldav-mcp --config /absolute/path/to/config.toml
 ```
 
 これは対話式CLIではなく、標準入力からMCPメッセージを受け取るプロセスです。通常はMCPホストから起動します。`--help` で起動引数を確認できます。
@@ -41,8 +41,8 @@ MCPホストの設定例です。コマンドや設定ファイルのパスは�
 {
   "mcpServers": {
     "caldav": {
-      "command": "/absolute/path/to/caldav-mcp/.venv/bin/python",
-      "args": ["-m", "caldav_mcp", "--config", "/absolute/path/to/config.toml"]
+      "command": "/absolute/path/to/caldav-mcp/target/release/caldav-mcp",
+      "args": ["--config", "/absolute/path/to/config.toml"]
     }
   }
 }
@@ -105,7 +105,7 @@ permit_create_map = True
 
 検索・空き時間の期間評価は接続先サーバが行います。Radicale 3.9.0のfree-busy処理は日付のみ・floatingの値をUTCとして扱います。特定の地域の時刻に合わせた空き時間が必要な予定には、タイムゾーン付き日時を指定してください。
 
-「この回以降」の編集は公開しません。Radicale 3.9.0の実サーバ試験では、`RANGE=THISANDFUTURE` を保存しても後続回の時刻に反映されないことを確認しています。シリーズの分割による代替処理も提供しません。
+編集範囲は `series` と `occurrence` です。Radicale 3.9.0では、保存済みの `RANGE=THISANDFUTURE` がGETに残る一方、展開REPORTの後続回に変更時刻が反映されない不具合を確認しています。検索の `expand=true` はこのサーバ側の計算結果を返します。範囲例外のあるシリーズから新しい個別例外を作る操作は `unsupported` として扱います。
 
 検索結果の `complete`、`errors`、`truncated` を確認してください。一部の接続失敗は空のカレンダーとは区別されます。空き時間照会で一部のカレンダーを取得できなければ、全体の `free` は `null` です。件数超過時は期間や検索条件を絞ってください。検索件数は最大500件、HTTP応答は展開後16 MiBまでです。
 
@@ -115,14 +115,29 @@ permit_create_map = True
 
 Radicale 3.9.0を一時起動し、2ユーザーで共有・予定・タスク・空き時間照会を検証しています。MCPのstdio接続についても公式SDKのクライアントで初期化と操作を試験します。実際のローカルLLMによるツール選択精度と、利用者の稼働中サーバとの接続は別途確認が必要です。
 
+試験用Radicaleの環境をリポジトリ内に用意します。Pythonとuvを使うのは、この接続先サーバの準備だけです。
+
 ```sh
-uv sync --frozen
-uv run --frozen pytest
-uv run --frozen ruff check src tests
-uv run --frozen ruff format --check src tests
-uv run --frozen mypy src
-uv build
+uv venv .venv
+uv pip install --python .venv/bin/python -r tests/requirements.txt
+cargo test --locked --all-targets
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo build --release --locked
 ```
+
+既存のRadicale環境を使う場合は `RADICALE_PYTHON` にそのPython実行ファイルを指定します。Radicaleを使わない検証は `cargo test --locked --lib --test mcp_stdio` で実行できます。
+
+Guix環境では [manifest.scm](manifest.scm) と [scripts/rust.sh](scripts/rust.sh) を使えます。
+
+```sh
+scripts/rust.sh cargo test --locked --all-targets
+scripts/rust.sh cargo clippy --locked --all-targets -- -D warnings
+scripts/rust.sh cargo fmt --all -- --check
+scripts/rust.sh cargo build --release --locked
+```
+
+Rustの依存関係は `Cargo.lock` で固定します。Guix用スクリプトはクレートのダウンロードを `.guix-shell/cargo` に保持します。これは開発用の依存ファイルであり、カレンダーのキャッシュではありません。
 
 テストは一時ディレクトリ内のRadicaleのみを操作します。利用者の設定や実サーバは読み込みません。
 
