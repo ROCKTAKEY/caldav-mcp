@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "caldav-mcp",
+  "description": "Multi-account CalDAV calendars, events, tasks and sharing over MCP.",
+  "repository": "https://github.com/ROCKTAKEY/caldav-mcp",
+  "license": "AGPL-3.0-or-later"
+}

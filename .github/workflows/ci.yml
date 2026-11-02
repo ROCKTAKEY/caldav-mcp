@@ -48,6 +48,8 @@ jobs:
           - name: Clippy
             run: cargo clippy --locked --all-targets -- -D warnings
       - parallel:
+          - name: Agent plugin tests
+            run: uv run --no-project --python 3.15 --with certifi -m unittest discover -s tests -p test_plugin.py
           - name: Unit, MCP and Radicale integration tests
             run: cargo test --locked --all-targets
           - name: Release build
