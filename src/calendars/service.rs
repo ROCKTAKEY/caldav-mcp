@@ -276,7 +276,23 @@ impl<'a> Calendars<'a> {
     }
     pub async fn delete(&self, r: &CalendarRef) -> Result<Value> {
         self.get(r).await?;
-        self.client.request("DELETE", &r.url, None, &[]).await?;
+        let response = self.client.request("DELETE", &r.url, None, &[]).await?;
+        if response.status == 207 {
+            let failures: Vec<_> = properties(&response.body)?
+                .into_iter()
+                .filter(|row| !(200..300).contains(&row.status) || !row.failed.is_empty())
+                .map(
+                    |row| json!({"href": row.href, "status": row.status, "properties": row.failed}),
+                )
+                .collect();
+            if !failures.is_empty() {
+                return Err(Error::new(
+                    "calendar_delete_failed",
+                    "Calendar deletion failed for one or more resources",
+                )
+                .detail("resources", failures));
+            }
+        }
         Ok(json!({"status":"deleted"}))
     }
 }

@@ -108,10 +108,12 @@ impl Items<'_> {
         fields: &ItemPatch,
     ) -> Result<RetrievedItem> {
         let doc = Document::create(kind, uid, fields)?;
+        // Radicale shared calendars can allow PUT without advertising DAV:bind.
+        // Let the server authorize creation; write-content is not required on the parent.
         self.calendars
             .get(&calendar)
             .await?
-            .require("write-content", Some(kind))?;
+            .require_component(kind)?;
         let url = format!("{}{:x}.ics", calendar.url, Sha256::digest(uid.as_bytes()));
         let target = ResourceRef { calendar, url };
         self.write(target, doc, "If-None-Match", "*").await
@@ -191,14 +193,10 @@ impl Items<'_> {
         if let Some(text) = &q.text {
             filter.push_str(&format!("<C:prop-filter name=\"SUMMARY\"><C:text-match collation=\"i;unicode-casemap\">{}</C:text-match></C:prop-filter>",escape(text)));
         }
-        let timezone = if self.timezone != "UTC" {
-            format!(
-                "<C:timezone>{}</C:timezone>",
-                escape(&timezone_document(self.timezone)?)
-            )
-        } else {
-            String::new()
-        };
+        let timezone = format!(
+            "<C:timezone>{}</C:timezone>",
+            escape(&timezone_document(self.timezone)?)
+        );
         let body = envelope(
             "C:calendar-query",
             &format!(
@@ -246,6 +244,13 @@ impl Items<'_> {
                         continue;
                     }
                     let mut value = c.describe()?;
+                    if q.text.as_ref().is_some_and(|text| {
+                        value["summary"].as_str().is_none_or(|summary| {
+                            !summary.to_lowercase().contains(&text.to_lowercase())
+                        })
+                    }) {
+                        continue;
+                    }
                     value["ref"] = json!(target);
                     value["revision"] = json!(revision);
                     found.push(value);

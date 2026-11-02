@@ -52,17 +52,22 @@ pub struct CalendarInfo {
     pub unavailable_properties: BTreeMap<String, u16>,
 }
 impl CalendarInfo {
-    pub fn require(&self, privilege: &str, kind: Option<ComponentKind>) -> Result<()> {
-        if let Some(k) = kind
-            && self
-                .components
-                .as_ref()
-                .is_some_and(|v| !v.iter().any(|s| s == k.as_str()))
+    pub fn require_component(&self, kind: ComponentKind) -> Result<()> {
+        if self
+            .components
+            .as_ref()
+            .is_some_and(|v| !v.iter().any(|s| s == kind.as_str()))
         {
             return Err(Error::new(
                 "unsupported",
                 "Calendar does not support component",
             ));
+        }
+        Ok(())
+    }
+    pub fn require(&self, privilege: &str, kind: Option<ComponentKind>) -> Result<()> {
+        if let Some(kind) = kind {
+            self.require_component(kind)?;
         }
         if let Some(privileges) = &self.privileges {
             let allowed = privileges.iter().any(|s| {
