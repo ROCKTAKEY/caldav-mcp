@@ -261,7 +261,12 @@ def edit_document(calendar: Calendar, patch: ItemPatch, scope: Scope) -> Calenda
     if isinstance(scope, OccurrenceScope):
         if patch.model_fields_set & {"recurrence_rule", "recurrence_dates", "exception_dates"}:
             raise CalendarError("invalid_input", "Edit recurrence rules with series scope")
-        targets = [select_occurrence(result, scope)]
+        target = select_occurrence(result, scope)
+        if target["RECURRENCE-ID"].params.get("RANGE"):
+            raise CalendarError(
+                "unsupported", "Cannot edit a THISANDFUTURE anchor as one occurrence"
+            )
+        targets = [target]
     else:
         targets = [c for c in members(result) if "RECURRENCE-ID" not in c]
         if len(targets) != 1:

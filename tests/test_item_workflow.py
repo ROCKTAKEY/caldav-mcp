@@ -44,3 +44,77 @@ async def test_task_crud_conflicts_and_complete_reopen(settings):
         await calendars.delete(calendar.ref)
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_recurrence_and_advanced_fields_roundtrip_radicale(settings):
+    from caldav_mcp.models import OccurrenceScope, Period, UtcValue
+
+    client = DavClient(settings.accounts[0])
+    calendars, items = Calendars(client), Items(Calendars(client))
+    try:
+        calendar = await calendars.create(NewCalendar(account="alice", name="Recurrences"))
+        created = await items.create(
+            calendar.ref,
+            NewItem(
+                kind="VEVENT",
+                uid=str(uuid4()),
+                fields=ItemPatch(
+                    summary="Weekly",
+                    start={
+                        "kind": "zoned",
+                        "value": "2026-10-26T10:00:00",
+                        "timezone": "America/New_York",
+                    },
+                    end={
+                        "kind": "zoned",
+                        "value": "2026-10-26T11:00:00",
+                        "timezone": "America/New_York",
+                    },
+                    recurrence_rule="FREQ=WEEKLY;COUNT=5",
+                    categories=["Work", "Planning"],
+                    classification="PRIVATE",
+                    attachments=[
+                        {"uri": "https://example.org/agenda.pdf", "media_type": "application/pdf"}
+                    ],
+                    alarms=[{"description": "Meeting", "trigger": "-PT15M"}],
+                ),
+            ),
+        )
+        updated = await items.save(
+            created.edit(
+                ItemPatch(
+                    start={
+                        "kind": "zoned",
+                        "value": "2026-11-02T11:00:00",
+                        "timezone": "America/New_York",
+                    },
+                    end={
+                        "kind": "zoned",
+                        "value": "2026-11-02T12:00:00",
+                        "timezone": "America/New_York",
+                    },
+                ),
+                OccurrenceScope(recurrence_id=UtcValue(value="2026-11-02T15:00:00Z")),
+            )
+        )
+        event = updated.document.walk("VEVENT")[0]
+        assert str(event["CLASS"]) == "PRIVATE"
+        assert str(event["ATTACH"]) == "https://example.org/agenda.pdf"
+        assert event.subcomponents[0].name == "VALARM"
+        query = Search(
+            kind="VEVENT",
+            calendars=[calendar.ref],
+            expand=True,
+            period=Period(start="2026-10-26T00:00:00Z", end="2026-11-24T00:00:00Z"),
+        )
+        expanded = await items.search(calendar.ref, query)
+        assert expanded["complete"], expanded
+        assert len(expanded["items"]) == 5
+        from datetime import datetime
+
+        starts = sorted(datetime.fromisoformat(i["start"]["value"]) for i in expanded["items"])
+        assert [t.hour for t in starts] == [14, 16, 15, 15, 15]
+        await calendars.delete(calendar.ref)
+    finally:
+        await client.close()

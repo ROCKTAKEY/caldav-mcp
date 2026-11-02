@@ -120,3 +120,14 @@ def test_patch_omission_and_explicit_removal_are_distinct():
         "DESCRIPTION"
         not in edit_document(doc, ItemPatch(description=None), SeriesScope()).walk("VEVENT")[0]
     )
+
+
+def test_radicale_unsupported_future_scope_is_rejected_at_boundary():
+    from pydantic import TypeAdapter, ValidationError
+
+    from caldav_mcp.models import Scope
+
+    with pytest.raises(ValidationError):
+        TypeAdapter(Scope).validate_python(
+            {"kind": "future", "recurrence_id": {"kind": "utc", "value": "2026-11-02T15:00:00Z"}}
+        )
