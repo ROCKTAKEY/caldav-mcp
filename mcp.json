@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "caldav": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["${PLUGIN_ROOT}/hermes/launch.py"],
+      "env": {
+        "CALDAV_MCP_CONFIG": "${CALDAV_MCP_CONFIG}",
+        "CALDAV_MCP_BINARY": "${CALDAV_MCP_BINARY}",
+        "CALDAV_MCP_CREDENTIALS": "${CALDAV_MCP_CREDENTIALS}"
+      }
+    }
+  }
+}
