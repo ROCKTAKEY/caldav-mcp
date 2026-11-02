@@ -1,0 +1,17 @@
+timezone = "Asia/Tokyo"
+
+[[accounts]]
+id = "personal"
+url = "https://calendar.example.net/"
+username = "alice"
+password_env = "CALDAV_PERSONAL_PASSWORD"
+sharing_url = "https://calendar.example.net/.sharing/v1/"
+# default_calendar = "https://calendar.example.net/alice/personal/"
+# calendars = ["https://calendar.example.net/bob/shared/"]
+
+[[accounts]]
+id = "work"
+url = "https://calendar.example.net/"
+username = "bob"
+password_env = "CALDAV_WORK_PASSWORD"
+sharing_url = "https://calendar.example.net/.sharing/v1/"
