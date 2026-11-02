@@ -5,7 +5,7 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/ci.yml':
         - 'actions/checkout@v6.1.0'
-        - 'actions/setup-python@v6.3.0'
+        - 'astral-sh/setup-uv@v10.3.3'
         - 'dtolnay/rust-toolchain@stable'
     '.github/workflows/tagpr.yml':
         - 'actions/checkout@v6.1.0'
@@ -17,11 +17,11 @@ dependencies:
         commit: 'sha1-d23441a48e516b6c34aea4fa41551a30e30af803'
         owner_id: 44036562
         repo_id: 197814629
-    'actions/setup-python@v6.3.0':
-        ref: 'v6.3.0'
-        commit: 'sha1-ece7cb06caefa5fff74198d8649806c4678c61a1'
-        owner_id: 44036562
-        repo_id: 192625525
+    'astral-sh/setup-uv@v10.3.3':
+        ref: 'v10.3.3'
+        commit: 'sha1-68559e99cc807c1eb7e9238fd43a15bba460eec2'
+        owner_id: 115962839
+        repo_id: 846733598
     'dtolnay/rust-toolchain@stable':
         ref: 'stable'
         commit: 'sha1-b725eda525362e7cf34af9a7243cac1e3f01a7ec'

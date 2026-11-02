@@ -20,7 +20,6 @@ jobs:
     timeout-minutes: 20
     env:
       CARGO_TERM_COLOR: always
-      PIP_DISABLE_PIP_VERSION_CHECK: '1'
     steps:
       - uses: actions/checkout@v6.1.0
         with:
@@ -29,8 +28,9 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
-      - uses: actions/setup-python@v6.3.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: '0.13.6'
           python-version: '3.12'
       - name: Verify workflow dependency lockfile
         env:
@@ -40,8 +40,8 @@ jobs:
           gh actions-lock --verify
       - name: Install test CalDAV server
         run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install -r tests/requirements.txt
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -r tests/requirements.txt
       - name: Formatting
         run: cargo fmt --all -- --check
       - name: Clippy
