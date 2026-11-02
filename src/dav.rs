@@ -352,3 +352,16 @@ mod tests {
         }
     }
 }
+#[cfg(test)]
+mod xml_tests {
+    use super::*;
+    #[test]
+    fn rejects_entities_and_distinguishes_failed_properties() {
+        assert!(properties(r#"<!DOCTYPE x [<!ENTITY secret SYSTEM "file:///etc/passwd">]><D:multistatus xmlns:D="DAV:">&secret;</D:multistatus>"#).is_err());
+        let xml = r#"<D:multistatus xmlns:D="DAV:"><D:response><D:href>/alice/a/</D:href><D:propstat><D:prop><D:displayname>Calendar</D:displayname></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat><D:propstat><D:prop><D:owner/></D:prop><D:status>HTTP/1.1 403 Forbidden</D:status></D:propstat></D:response></D:multistatus>"#;
+        let rows = properties(xml).unwrap();
+        assert_eq!(rows[0].text(D, "displayname"), Some("Calendar"));
+        assert_eq!(rows[0].failed["{DAV:}owner"], 403);
+        assert!(rows[0].get(D, "owner").is_none());
+    }
+}

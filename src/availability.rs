@@ -107,3 +107,33 @@ pub async fn query(
     let value = json!({"calendar":calendar,"period":period,"busy":busy,"free":free_intervals(period,intervals.clone()),"complete":true});
     Ok(AvailabilityResult { value, intervals })
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn merges_overlaps_and_clips_busy_periods_before_finding_gaps() {
+        let p: Period = serde_json::from_value(
+            json!({"start":"2026-11-02T09:00:00Z","end":"2026-11-02T17:00:00Z"}),
+        )
+        .unwrap();
+        let dt = |h| Utc.with_ymd_and_hms(2026, 11, 2, h, 0, 0).unwrap();
+        use chrono::TimeZone;
+        let free = free_intervals(
+            &p,
+            vec![
+                (dt(8), dt(10)),
+                (dt(9), dt(11)),
+                (dt(12), dt(13)),
+                (dt(13), dt(14)),
+                (dt(16), dt(18)),
+            ],
+        );
+        assert_eq!(
+            free,
+            vec![
+                json!({"start":dt(11),"end":dt(12)}),
+                json!({"start":dt(14),"end":dt(16)})
+            ]
+        );
+    }
+}

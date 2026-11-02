@@ -86,6 +86,12 @@ async fn shares_and_free_busy_work_without_event_read_access() {
         )
         .await
         .unwrap();
+    let shares = s
+        .app
+        .invoke("list_shares", json!({"account":"alice"}))
+        .await
+        .unwrap();
+    assert_eq!(shares["shares"].as_array().unwrap().len(), 1);
     let shared = json!({"account":"bob","url":format!("{}bob/team/",s.base)});
     let items=s.app.invoke("search_events",json!({"calendars":[shared],"period":{"start":"2026-11-09T00:00:00Z","end":"2026-11-10T00:00:00Z"}})).await.unwrap();
     assert_eq!(items["items"].as_array().unwrap().len(), 1);
@@ -120,6 +126,117 @@ async fn shares_and_free_busy_work_without_event_read_access() {
         )
         .await
         .unwrap();
+    s.app
+        .invoke("delete_calendar", json!({"calendar":calendar}))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn recurring_events_journals_metadata_and_partial_results() {
+    let s = Radicale::start().await;
+    let calendar = s
+        .app
+        .invoke(
+            "create_calendar",
+            json!({"spec":{"account":"alice","name":"Planning","timezone":"America/New_York"}}),
+        )
+        .await
+        .unwrap()["ref"]
+        .clone();
+    let updated=s.app.invoke("update_calendar",json!({"calendar":calendar,"changes":{"name":"Work","description":"Notes","color":"#112233"}})).await.unwrap();
+    assert_eq!(updated["name"], "Work");
+    let info = s
+        .app
+        .invoke("get_calendar", json!({"calendar":calendar}))
+        .await
+        .unwrap();
+    assert_eq!(info["name"], "Work");
+    assert!(
+        updated["timezone_icalendar"]
+            .as_str()
+            .unwrap()
+            .contains("America/New_York")
+    );
+    let listed = s
+        .app
+        .invoke("list_calendars", json!({"accounts":["alice"]}))
+        .await
+        .unwrap();
+    assert!(
+        listed["calendars"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v["ref"] == calendar)
+    );
+    let event=s.app.invoke("create_event",json!({"calendar":calendar,"uid":"weekly","fields":{
+  "summary":"Weekly","start":{"kind":"zoned","value":"2026-10-26T10:00:00","timezone":"America/New_York"},"end":{"kind":"zoned","value":"2026-10-26T11:00:00","timezone":"America/New_York"},"recurrence_rule":"FREQ=WEEKLY;COUNT=5",
+  "categories":["Work","Planning"],"classification":"PRIVATE","attachments":[{"uri":"https://example.org/agenda.pdf","media_type":"application/pdf"}],"related_to":[{"uid":"parent","relationship":"PARENT"}],"alarms":[{"description":"Meeting","trigger":"-PT15M"}]
+ }})).await.unwrap();
+    let changed=s.app.invoke("update_item",json!({"ref":event["ref"],"revision":event["revision"],"scope":{"kind":"occurrence","recurrence_id":{"kind":"utc","value":"2026-11-02T15:00:00Z"}},"changes":{"start":{"kind":"utc","value":"2026-11-02T16:00:00Z"},"end":{"kind":"utc","value":"2026-11-02T17:00:00Z"}}})).await.unwrap();
+    assert!(
+        changed["icalendar"]
+            .as_str()
+            .unwrap()
+            .contains("BEGIN:VALARM")
+    );
+    assert!(
+        changed["icalendar"]
+            .as_str()
+            .unwrap()
+            .contains("https://example.org/agenda.pdf")
+    );
+    let search = json!({"calendars":[calendar],"period":{"start":"2026-10-26T00:00:00Z","end":"2026-11-24T00:00:00Z"}});
+    let expanded = s.app.invoke("search_events", search.clone()).await.unwrap();
+    assert_eq!(expanded["complete"], true, "{expanded}");
+    let mut starts = expanded["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| {
+            v["start"]["value"]
+                .as_str()
+                .unwrap()
+                .parse::<chrono::DateTime<chrono::Utc>>()
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+    starts.sort();
+    use chrono::Timelike;
+    assert_eq!(
+        starts.iter().map(|t| t.hour()).collect::<Vec<_>>(),
+        vec![14, 16, 15, 15, 15]
+    );
+    let nonexistent=s.app.invoke("update_item",json!({"ref":changed["ref"],"revision":changed["revision"],"scope":{"kind":"occurrence","recurrence_id":{"kind":"utc","value":"2026-11-03T15:00:00Z"}},"changes":{"summary":"wrong"}})).await.unwrap_err();
+    assert_eq!(nonexistent.code, "not_found");
+    s.app.invoke("delete_item",json!({"ref":changed["ref"],"revision":changed["revision"],"scope":{"kind":"occurrence","recurrence_id":{"kind":"utc","value":"2026-11-09T15:00:00Z"}}})).await.unwrap();
+    let expanded = s.app.invoke("search_events", search.clone()).await.unwrap();
+    assert_eq!(expanded["items"].as_array().unwrap().len(), 4);
+    let mut limited = search.clone();
+    limited["limit"] = json!(1);
+    let limited = s.app.invoke("search_events", limited).await.unwrap();
+    assert_eq!(limited["truncated"], true);
+    assert_eq!(limited["complete"], false);
+    s.app.invoke("create_journal",json!({"calendar":calendar,"uid":"journal","fields":{"summary":"Notes","start":{"kind":"date","value":"2026-11-02"},"status":"FINAL"}})).await.unwrap();
+    let journals = s
+        .app
+        .invoke("search_journals", json!({"calendars":[calendar]}))
+        .await
+        .unwrap();
+    assert_eq!(journals["items"].as_array().unwrap().len(), 1);
+    let bad = json!({"account":"missing","url":calendar["url"]});
+    let partial = s
+        .app
+        .invoke(
+            "free_busy",
+            json!({"calendars":[calendar,bad],"period":search["period"]}),
+        )
+        .await
+        .unwrap();
+    assert_eq!(partial["complete"], false);
+    assert!(partial["free"].is_null());
+    assert_eq!(partial["calendars"].as_array().unwrap().len(), 1);
     s.app
         .invoke("delete_calendar", json!({"calendar":calendar}))
         .await

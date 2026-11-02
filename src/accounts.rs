@@ -5,8 +5,8 @@ use url::Url;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(try_from = "SettingsInput")]
 pub struct Settings {
-    pub accounts: Vec<AccountConfig>,
-    pub timezone: String,
+    pub(crate) accounts: Vec<AccountConfig>,
+    pub(crate) timezone: String,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -40,15 +40,15 @@ impl TryFrom<SettingsInput> for Settings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(try_from = "AccountInput")]
 pub struct AccountConfig {
-    pub id: String,
-    pub url: Url,
-    pub username: Option<String>,
-    pub password_env: Option<String>,
-    pub bearer_token_env: Option<String>,
-    pub calendars: Vec<Url>,
-    pub sharing_url: Option<Url>,
-    pub default_calendar: Option<Url>,
-    pub timeout_seconds: f64,
+    pub(crate) id: String,
+    pub(crate) url: Url,
+    pub(crate) username: Option<String>,
+    pub(crate) password_env: Option<String>,
+    pub(crate) bearer_token_env: Option<String>,
+    pub(crate) calendars: Vec<Url>,
+    pub(crate) sharing_url: Option<Url>,
+    pub(crate) default_calendar: Option<Url>,
+    pub(crate) timeout_seconds: f64,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
