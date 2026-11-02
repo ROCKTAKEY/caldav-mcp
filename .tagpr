@@ -1,0 +1,7 @@
+[tagpr]
+    releaseBranch = main
+    versionFile = Cargo.toml
+    vPrefix = true
+    changelog = true
+    release = true
+    postVersionCommand = cargo update --workspace --offline

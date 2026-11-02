@@ -1,0 +1,46 @@
+name: tagpr
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tagpr-main
+  cancel-in-progress: false
+
+jobs:
+  tagpr:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Fetch locked dependencies for release preparation
+        run: cargo fetch --locked
+      - uses: Songmu/tagpr@v1.21.2
+        id: tagpr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # GITHUB_TOKEN-created PR events do not automatically run CI.
+      # Explicit workflow_dispatch works without an additional long-lived token.
+      - name: Check release PR
+        if: steps.tagpr.outputs.pull_request != '' && steps.tagpr.outputs.tag == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BRANCH: ${{ fromJSON(steps.tagpr.outputs.pull_request).head.ref }}
+        run: gh workflow run ci.yml --ref "$RELEASE_BRANCH"

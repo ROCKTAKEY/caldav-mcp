@@ -141,4 +141,18 @@ Rustの依存関係は `Cargo.lock` で固定します。Guix用スクリプト�
 
 テストは一時ディレクトリ内のRadicaleのみを操作します。利用者の設定や実サーバは読み込みません。
 
+## CIとリリース
+
+[CI](.github/workflows/ci.yml)はpush・pull request・手動実行で、workflow依存の検証、fmt、Clippy、全テスト、リリースビルドを実行します。Radicale 3.9.0はCI内の一時サーバとして起動します。
+
+Actionの実行コミットはGitHub Actions標準の[actions.lock](.github/workflows/actions.lock)で固定します。workflowの `uses` を変更したときは、公式CLIでlockファイルを再生成して一緒にコミットしてください。Dependabotもworkflowとlockファイルをまとめて更新します。
+
+```sh
+gh extension install github/gh-actions-lock --pin v0.4.1
+gh actions-lock
+gh actions-lock --verify
+```
+
+[tagpr](.github/workflows/tagpr.yml)は `main` へのpushでリリースPRを作成・更新します。[.tagpr](.tagpr)に従って `Cargo.toml` と `Cargo.lock` のバージョン、CHANGELOGを更新し、リリースPRのマージ後に `v` 接頭辞のタグとGitHub Releaseを作成します。`GITHUB_TOKEN`が作ったPRでもCIを実行できるよう、tagprから明示的にCIの `workflow_dispatch` を呼び出します。リポジトリのActions設定では「Allow GitHub Actions to create and approve pull requests」を有効にします。
+
 [設計](docs/design.md)では、型付き入力、更新の状態、機能ごとの責務を説明しています。ライセンスは[AGPL-3.0](LICENSE)です。
