@@ -17,7 +17,15 @@ dependencies = [
 caldav-mcp = "caldav_mcp.server:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=1", "ruff>=0.14", "mypy>=1.18", "types-defusedxml", "radicale>=3.5,<4"]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=1",
+    "ruff>=0.14",
+    "mypy>=1.18",
+    "types-defusedxml",
+    "radicale>=3.5,<4",
+    "types-python-dateutil>=2.9.0.20261029",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
