@@ -1,0 +1,9 @@
+.venv/
+.guix-shell/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+config.toml
