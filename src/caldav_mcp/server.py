@@ -139,6 +139,8 @@ def create_server(settings: Settings) -> FastMCP:
     @tool(server)
     async def create_calendar(spec: NewCalendar) -> dict[str, Any]:
         """Create a calendar in the selected account's calendar home."""
+        if spec.timezone is None:
+            spec = spec.model_copy(update={"timezone": settings.timezone})
         return (await app().calendars(spec.account).create(spec)).model_dump()
 
     @tool(server, destructive=True)
@@ -181,11 +183,22 @@ def create_server(settings: Settings) -> FastMCP:
         calendars: list[CalendarRef],
         period: Period | None = None,
         text: str | None = None,
+        completed: bool | None = None,
         expand: bool = False,
         limit: int = 100,
     ) -> dict[str, Any]:
         """Search tasks, including undated tasks when period is omitted. text matches SUMMARY."""
-        return await search_kind("VTODO", calendars, period, text, expand, limit)
+        return await app().search(
+            Search(
+                kind="VTODO",
+                calendars=calendars,
+                period=period,
+                text=text,
+                expand=expand,
+                limit=limit,
+                completed=completed,
+            )
+        )
 
     @tool(server, read_only=True)
     async def search_journals(

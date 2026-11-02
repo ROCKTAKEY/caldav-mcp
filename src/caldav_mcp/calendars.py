@@ -1,12 +1,17 @@
+from datetime import date
 from typing import Any
 from uuid import uuid4
 from xml.etree import ElementTree as ET
+from zoneinfo import ZoneInfo
+
+from icalendar import Calendar, Timezone
 
 from .dav import A, C, D, DavClient, Properties, element, properties, tag, xml
 from .errors import CalendarError
 from .models import CalendarProperties, CalendarRef, Model, NewCalendar
 
 CALENDAR_PROPERTIES = [
+    tag(C, "calendar-timezone"),
     tag(D, "resourcetype"),
     tag(D, "displayname"),
     tag(C, "calendar-description"),
@@ -23,6 +28,7 @@ class CalendarInfo(Model):
     name: str | None
     description: str | None
     color: str | None
+    timezone_icalendar: str | None
     components: list[str] | None
     privileges: list[str] | None
     reports: list[str] | None
@@ -75,6 +81,7 @@ class Calendars:
         return CalendarInfo(
             ref=self.ref(self.client.resolve(row.href, base)),
             name=text(tag(D, "displayname")),
+            timezone_icalendar=text(tag(C, "calendar-timezone")),
             description=text(tag(C, "calendar-description")),
             color=text(tag(A, "calendar-color")),
             components=[n.attrib["name"] for n in components] if components is not None else None,
@@ -149,6 +156,8 @@ class Calendars:
         prop.append(element(D, "displayname", spec.name))
         if spec.description is not None:
             prop.append(element(C, "calendar-description", spec.description))
+        if spec.timezone is not None:
+            prop.append(element(C, "calendar-timezone", timezone_document(spec.timezone)))
         supported = ET.SubElement(prop, tag(C, "supported-calendar-component-set"))
         for kind in spec.components:
             supported.append(element(C, "comp", name=kind))
@@ -180,11 +189,14 @@ class Calendars:
             "name": (D, "displayname"),
             "description": (C, "calendar-description"),
             "color": (A, "calendar-color"),
+            "timezone": (C, "calendar-timezone"),
         }
         if not changes.model_fields_set:
             return current
         for field in sorted(changes.model_fields_set):
             value = getattr(changes, field)
+            if field == "timezone" and value is not None:
+                value = timezone_document(value)
             action = ET.SubElement(root, tag(D, "remove" if value is None else "set"))
             prop = ET.SubElement(action, tag(D, "prop"))
             prop.append(element(*mapping[field], value))
@@ -212,3 +224,15 @@ class Calendars:
         await self.get(ref)
         await self.client.request("DELETE", ref.url)
         return {"status": "deleted"}
+
+
+def timezone_document(name: str) -> str:
+    calendar = Calendar()
+    calendar.add("VERSION", "2.0")
+    calendar.add("PRODID", "-//caldav-mcp//EN")
+    calendar.add_component(
+        Timezone.from_tzinfo(
+            ZoneInfo(name), first_date=date(1900, 1, 1), last_date=date(2100, 12, 31)
+        )
+    )
+    return calendar.to_ical().decode()

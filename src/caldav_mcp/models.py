@@ -151,7 +151,7 @@ class Revision(Model):
 
 class AlarmSpec(Model):
     description: str
-    trigger: timedelta
+    trigger: timedelta | UtcValue
     relative_to: Literal["START", "END"] = "START"
 
 
@@ -231,23 +231,42 @@ class Search(Model):
     calendars: list[CalendarRef] = Field(min_length=1)
     period: Period | None = None
     text: str | None = None
+    completed: bool | None = None
     expand: bool = False
     limit: int = Field(default=100, ge=1, le=500)
 
     @model_validator(mode="after")
     def expansion_period(self) -> Self:
+        if self.completed is not None and self.kind != "VTODO":
+            raise ValueError("completed is only valid for tasks")
         if self.expand and self.period is None:
             raise ValueError("Expansion requires a bounded period")
         return self
 
 
+def timezone_name(value: str | None) -> str | None:
+    if value is not None:
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError("Unknown timezone") from exc
+    return value
+
+
 class CalendarProperties(Model):
+    timezone: str | None = None
+
+    _timezone = field_validator("timezone")(timezone_name)
+
     name: str | None = None
     description: str | None = None
     color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")
 
 
 class NewCalendar(Model):
+    timezone: str | None = None
+    _timezone = field_validator("timezone")(timezone_name)
+
     account: str
     name: str = Field(min_length=1)
     components: list[ComponentKind] = Field(default=["VEVENT", "VTODO", "VJOURNAL"], min_length=1)

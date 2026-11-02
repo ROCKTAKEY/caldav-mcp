@@ -118,3 +118,26 @@ async def test_recurrence_and_advanced_fields_roundtrip_radicale(settings):
         await calendars.delete(calendar.ref)
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_unfinished_task_search_includes_tasks_without_status(settings):
+    client = DavClient(settings.accounts[0])
+    calendars, items = Calendars(client), Items(Calendars(client))
+    try:
+        calendar = await calendars.create(NewCalendar(account="alice", name="Pending"))
+        for status in (None, "COMPLETED"):
+            await items.create(
+                calendar.ref,
+                NewItem(
+                    kind="VTODO", uid=str(uuid4()), fields=ItemPatch(summary="Task", status=status)
+                ),
+            )
+        query = Search.model_validate(
+            {"kind": "VTODO", "calendars": [calendar.ref.model_dump()], "completed": False}
+        )
+        result = await items.search(calendar.ref, query)
+        assert len(result["items"]) == 1
+        assert result["complete"]
+    finally:
+        await client.close()

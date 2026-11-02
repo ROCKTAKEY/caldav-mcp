@@ -114,6 +114,9 @@ def validate_component(component: Component) -> None:
         rule = component["RRULE"]
         if not isinstance(rule, vRecur):
             raise CalendarError("invalid_input", "Expected one recurrence rule")
+        for positive in ("COUNT", "INTERVAL"):
+            if positive in rule and (len(rule[positive]) != 1 or int(rule[positive][0]) <= 0):
+                raise CalendarError("invalid_input", f"RRULE {positive} must be a positive integer")
         if "COUNT" in rule and "UNTIL" in rule:
             raise CalendarError("invalid_input", "RRULE cannot contain COUNT and UNTIL together")
         try:
@@ -153,7 +156,10 @@ def apply_patch(component: Component, patch: ItemPatch) -> None:
                 alarm = Alarm()
                 alarm.add("ACTION", "DISPLAY")
                 alarm.add("DESCRIPTION", spec.description)
-                alarm.add("TRIGGER", spec.trigger, parameters={"RELATED": spec.relative_to})
+                if isinstance(spec.trigger, timedelta):
+                    alarm.add("TRIGGER", spec.trigger, parameters={"RELATED": spec.relative_to})
+                else:
+                    alarm.add("TRIGGER", spec.trigger.native(), parameters={"VALUE": "DATE-TIME"})
                 component.add_component(alarm)
             continue
         prop = SIMPLE_PROPERTIES[field]

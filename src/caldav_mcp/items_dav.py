@@ -163,6 +163,10 @@ class Items:
                 revision = Revision(etag=etag_node.text)
                 document = parse_document(data_node.text)
                 for member in members(document):
+                    if query.completed is not None:
+                        completed = str(member.get("STATUS", "")) == "COMPLETED"
+                        if completed != query.completed:
+                            continue
                     if member.name == query.kind:
                         found.append(
                             {

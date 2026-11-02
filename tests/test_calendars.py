@@ -25,3 +25,23 @@ async def test_calendar_lifecycle_and_discovery(settings):
         assert created.ref not in [c.ref for c in await calendars.list()]
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_calendar_timezone_roundtrips(settings):
+    client = DavClient(settings.accounts[0])
+    calendars = Calendars(client)
+    try:
+        created = await calendars.create(
+            NewCalendar.model_validate(
+                {"account": "alice", "name": "Tokyo", "timezone": "Asia/Tokyo"}
+            )
+        )
+        assert "TZID:Asia/Tokyo" in created.timezone_icalendar
+        changed = await calendars.update(
+            created.ref, CalendarProperties.model_validate({"timezone": "Europe/Berlin"})
+        )
+        assert "TZID:Europe/Berlin" in changed.timezone_icalendar
+        await calendars.delete(created.ref)
+    finally:
+        await client.close()

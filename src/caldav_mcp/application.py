@@ -149,6 +149,6 @@ def describe(item: RetrievedItem) -> dict[str, Any]:
     return {
         "ref": item.ref.model_dump(),
         "revision": item.revision.model_dump(),
-        "components": [describe_component(c, detailed=True) for c in members(item.document)],
+        "components": [describe_component(c) for c in members(item.document)],
         "icalendar": item.document.to_ical().decode(),
     }

@@ -131,3 +131,37 @@ def test_radicale_unsupported_future_scope_is_rejected_at_boundary():
         TypeAdapter(Scope).validate_python(
             {"kind": "future", "recurrence_id": {"kind": "utc", "value": "2026-11-02T15:00:00Z"}}
         )
+
+
+def test_absolute_alarm_does_not_require_task_start():
+    item = NewItem(
+        kind="VTODO",
+        uid="alarm",
+        fields=ItemPatch.model_validate(
+            {
+                "summary": "Reminder",
+                "alarms": [
+                    {
+                        "description": "Reminder",
+                        "trigger": {"kind": "utc", "value": "2026-11-02T10:00:00Z"},
+                    }
+                ],
+            }
+        ),
+    )
+    alarm = create_document(item).walk("VALARM")[0]
+    assert alarm["TRIGGER"].dt == datetime(2026, 11, 2, 10, tzinfo=UTC)
+    assert alarm["TRIGGER"].params["VALUE"] == "DATE-TIME"
+
+
+def test_invalid_recurrence_interval_is_rejected():
+    with pytest.raises(CalendarError):
+        create_document(
+            new_event().model_copy(
+                update={
+                    "fields": new_event().fields.model_copy(
+                        update={"recurrence_rule": "FREQ=WEEKLY;INTERVAL=0"}
+                    )
+                }
+            )
+        )
