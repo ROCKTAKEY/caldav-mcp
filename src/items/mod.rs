@@ -3,3 +3,5 @@ pub mod models;
 
 mod recurrence;
 pub mod timezones;
+
+pub mod service;
