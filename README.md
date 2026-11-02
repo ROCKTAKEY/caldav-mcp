@@ -20,6 +20,12 @@
 
 ## 導入
 
+[GitHub Releases](https://github.com/ROCKTAKEY/caldav-mcp/releases)からLinux用のビルド済みバイナリを取得できます。x86_64は `caldav-mcp-x86_64-unknown-linux-musl.tar.gz`、ARM64は `caldav-mcp-aarch64-unknown-linux-musl.tar.gz` を選びます。muslによる静的リンクのため、実行時にRust・Pythonや特定バージョンのglibcは必要ありません。
+
+アーカイブと同じリリースの `SHA256SUMS` をダウンロードし、`sha256sum --check --ignore-missing SHA256SUMS` で検証してから展開します。同梱の `config.example.toml` を編集し、MCPホストのコマンドに展開した `caldav-mcp` の絶対パスを指定します。
+
+### ソースからビルド
+
 Rustのstable toolchainとCargoを使用します（Rust 1.98.1で検証）。リポジトリのルートで実行します。実行時にPythonは必要ありません。
 
 ```sh
@@ -156,3 +162,5 @@ gh actions-lock --verify
 [tagpr](.github/workflows/tagpr.yml)は `main` へのpushでリリースPRを作成・更新します。[.tagpr](.tagpr)に従って `Cargo.toml` と `Cargo.lock` のバージョン、CHANGELOGを更新し、リリースPRのマージ後に `v` 接頭辞のタグとGitHub Releaseを作成します。`GITHUB_TOKEN`が作ったPRでもCIを実行できるよう、tagprから明示的にCIの `workflow_dispatch` を呼び出します。リポジトリのActions設定では「Allow GitHub Actions to create and approve pull requests」を有効にします。
 
 [設計](docs/design.md)では、型付き入力、更新の状態、機能ごとの責務を説明しています。ライセンスは[AGPL-3.0](LICENSE)です。
+
+[バイナリ配布CD](.github/workflows/release.yml)は、tagprのタグ公開後にLinux x86_64／ARM64を並列ビルドし、起動・バージョン・静的リンクを確認してからアーカイブと `SHA256SUMS` をGitHub Releaseに添付します。PRではビルドとパッケージ検証までを実行します。既存リリースへ添付する場合は、`Release binaries` ワークフローをmainから実行し、`tag` に公開済みタグを指定します。同名の配布物は上書きしません。
