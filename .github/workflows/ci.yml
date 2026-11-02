@@ -16,7 +16,7 @@ concurrency:
 jobs:
   check:
     name: Rust checks
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     env:
       CARGO_TERM_COLOR: always
@@ -31,22 +31,27 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: '0.13.6'
-          python-version: '3.12'
-      - name: Verify workflow dependency lockfile
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh extension install github/gh-actions-lock --pin v0.4.1
-          gh actions-lock --verify
-      - name: Install test CalDAV server
-        run: |
-          uv venv --python 3.12 .venv
-          uv pip install --python .venv/bin/python -r tests/requirements.txt
-      - name: Formatting
-        run: cargo fmt --all -- --check
-      - name: Clippy
-        run: cargo clippy --locked --all-targets -- -D warnings
-      - name: Unit, MCP and Radicale integration tests
-        run: cargo test --locked --all-targets
-      - name: Release build
-        run: cargo build --release --locked
+          python-version: '3.15'
+      - parallel:
+          - name: Verify workflow dependency lockfile
+            env:
+              GH_TOKEN: ${{ github.token }}
+            run: |
+              gh extension install github/gh-actions-lock --pin v0.4.1
+              gh actions-lock --verify
+          - name: Install test CalDAV server
+            run: |
+              uv venv --python 3.15 .venv
+              uv pip install --python .venv/bin/python -r tests/requirements.txt
+          - name: Formatting
+            run: cargo fmt --all -- --check
+          - name: Clippy
+            run: cargo clippy --locked --all-targets -- -D warnings
+      - parallel:
+          - name: Unit, MCP and Radicale integration tests
+            run: cargo test --locked --all-targets
+          - name: Release build
+            # Separate output directories avoid Cargo's build-directory lock.
+            env:
+              CARGO_TARGET_DIR: target-release
+            run: cargo build --release --locked

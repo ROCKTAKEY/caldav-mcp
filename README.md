@@ -118,7 +118,7 @@ Radicale 3.9.0を一時起動し、2ユーザーで共有・予定・タスク�
 試験用Radicaleの環境をリポジトリ内に用意します。Pythonとuvを使うのは、この接続先サーバの準備だけです。
 
 ```sh
-uv venv --python 3.12 .venv
+uv venv --python 3.15 .venv
 uv pip install --python .venv/bin/python -r tests/requirements.txt
 cargo test --locked --all-targets
 cargo fmt --all -- --check
@@ -143,7 +143,7 @@ Rustの依存関係は `Cargo.lock` で固定します。Guix用スクリプト�
 
 ## CIとリリース
 
-[CI](.github/workflows/ci.yml)はpush・pull request・手動実行で、workflow依存の検証、fmt、Clippy、全テスト、リリースビルドを実行します。Python 3.12と試験用の依存関係はuvで用意し、Radicale 3.9.0をCI内の一時サーバとして起動します。
+[CI](.github/workflows/ci.yml)はpush・pull request・手動実行で、workflow依存の検証、fmt、Clippy、全テスト、リリースビルドを実行します。Ubuntu 26.04上で、独立した検査とビルドを並列実行します。Python 3.15と試験用の依存関係はuvで用意し、Radicale 3.9.0をCI内の一時サーバとして起動します。
 
 Actionの実行コミットはGitHub Actions標準の[actions.lock](.github/workflows/actions.lock)で固定します。workflowの `uses` を変更したときは、公式CLIでlockファイルを再生成して一緒にコミットしてください。Dependabotもworkflowとlockファイルをまとめて更新します。
 
