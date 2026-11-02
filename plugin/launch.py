@@ -1,4 +1,8 @@
-"""Launch the release binary using Hermes' profile-scoped plugin data directory."""
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["certifi"]
+# ///
+"""Launch the release binary using the client-managed plugin data directory."""
 
 import hashlib
 import io
@@ -6,6 +10,7 @@ import json
 import os
 import platform
 import re
+import ssl
 import sys
 import tarfile
 import tempfile
@@ -16,6 +21,8 @@ from pathlib import Path
 from types import MappingProxyType
 from urllib.request import urlopen
 
+import certifi
+
 
 @dataclass(frozen=True)
 class Credentials:
@@ -23,7 +30,7 @@ class Credentials:
 
     @classmethod
     def parse(cls, source: str) -> "Credentials":
-        message = "CALDAV_MCP_CREDENTIALS must be a JSON object mapping environment names to strings"
+        message = "credentials.json must be a JSON object mapping environment names to strings"
         try:
             values = json.loads(source)
         except ValueError:
@@ -49,7 +56,7 @@ class Release:
         machine = machines.get(platform.machine())
         if platform.system() != "Linux" or machine is None:
             raise ValueError(
-                "Automatic installation supports Linux x86_64/ARM64; set CALDAV_MCP_BINARY to your own build"
+                "Automatic installation supports Linux x86_64/ARM64; set binary in launcher.toml to your own build"
             )
         cargo = Path(__file__).resolve().parents[1] / "Cargo.toml"
         version = tomllib.loads(cargo.read_text())["package"]["version"]
@@ -71,7 +78,8 @@ class Release:
         print(
             f"caldav-mcp: downloading v{self.version} ({self.target})", file=sys.stderr
         )
-        with urlopen(f"{base}/SHA256SUMS", timeout=60) as response:
+        context = ssl.create_default_context(cafile=certifi.where())
+        with urlopen(f"{base}/SHA256SUMS", timeout=60, context=context) as response:
             checksums = response.read().decode()
         expected = None
         for line in checksums.splitlines():
@@ -80,7 +88,9 @@ class Release:
                 expected = fields[0]
         if expected is None:
             raise ValueError("release checksum is missing")
-        with urlopen(f"{base}/{package}.tar.gz", timeout=60) as response:
+        with urlopen(
+            f"{base}/{package}.tar.gz", timeout=60, context=context
+        ) as response:
             archive = response.read()
         return VerifiedBinary.from_archive(archive, expected, f"{package}/caldav-mcp")
 
@@ -103,7 +113,7 @@ class VerifiedBinary:
 
     def install(self, destination: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
-        # Concurrent Hermes sessions must never observe a partially written executable.
+        # Concurrent plugin sessions must never observe a partially written executable.
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -121,31 +131,43 @@ class VerifiedBinary:
 
 
 def launch() -> None:
-    configured = os.environ.get("CALDAV_MCP_CONFIG", "")
-    config = Path(configured).expanduser()
-    if not configured or not config.is_absolute() or not config.is_file():
+    supplied_data = os.environ.get("PLUGIN_DATA", "")
+    if not supplied_data or not Path(supplied_data).is_absolute():
         raise ValueError(
-            "Set CALDAV_MCP_CONFIG to the absolute path of your CalDAV config.toml"
+            "The plugin client must supply an absolute PLUGIN_DATA directory"
         )
-    credentials = Credentials.parse(os.environ.get("CALDAV_MCP_CREDENTIALS", "{}"))
-    override = os.environ.get("CALDAV_MCP_BINARY")
-    if override:
-        binary = Path(override).expanduser()
+    data = Path(supplied_data)
+    config = data / "config.toml"
+    if not config.is_file():
+        raise ValueError(
+            f"Create {config} using examples/config.toml from the plugin package"
+        )
+    credentials_file = data / "credentials.json"
+    credentials = Credentials.parse(
+        credentials_file.read_text() if credentials_file.exists() else "{}"
+    )
+    settings_file = data / "launcher.toml"
+    settings = (
+        tomllib.loads(settings_file.read_text()) if settings_file.exists() else {}
+    )
+    override = settings.get("binary")
+    if override is not None:
+        if not isinstance(override, str) or not override:
+            raise ValueError(
+                "launcher.toml binary must be an absolute path to an executable"
+            )
+        binary = Path(override)
         if (
             not binary.is_absolute()
             or not binary.is_file()
             or not os.access(binary, os.X_OK)
         ):
             raise ValueError(
-                "CALDAV_MCP_BINARY must be an absolute path to an executable"
+                "launcher.toml binary must be an absolute path to an executable"
             )
     else:
-        data = os.environ.get("PLUGIN_DATA")
-        if not data or not Path(data).is_absolute():
-            raise ValueError("Hermes must supply an absolute PLUGIN_DATA directory")
-        binary = Release.current().install(Path(data))
+        binary = Release.current().install(data)
     env = dict(os.environ)
-    env.pop("CALDAV_MCP_CREDENTIALS", None)
     env.update(credentials.values)
     os.execve(binary, [str(binary), "--config", str(config)], env)
 

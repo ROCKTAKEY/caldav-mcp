@@ -3,16 +3,5 @@
   "name": "caldav-mcp",
   "description": "Multi-account CalDAV calendars, events, tasks and sharing over MCP.",
   "repository": "https://github.com/ROCKTAKEY/caldav-mcp",
-  "license": "AGPL-3.0-or-later",
-  "extensions": {
-    "com.nousresearch.hermes": {
-      "config_schema": {
-        "credentials": {
-          "type": "secret",
-          "env": "CALDAV_MCP_CREDENTIALS",
-          "label": "CalDAV credentials (JSON environment-name to value mapping)"
-        }
-      }
-    }
-  }
+  "license": "AGPL-3.0-or-later"
 }

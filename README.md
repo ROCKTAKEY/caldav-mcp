@@ -24,32 +24,47 @@
 
 アーカイブと同じリリースの `SHA256SUMS` をダウンロードし、`sha256sum --check --ignore-missing SHA256SUMS` で検証してから展開します。同梱の `config.example.toml` を編集し、MCPホストのコマンドに展開した `caldav-mcp` の絶対パスを指定します。
 
-### Hermes Agentのpluginとして導入
+### Agent Plugins対応クライアントへ導入
 
-Hermes Agentの[Agent Plugins v1対応](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins/#portable-agent-plugins-v1-packages)を利用します。Hermesの実行環境のPATHに `uv` が必要です。起動用のPython 3.11以降は `uv run` が用意します。Linux x86_64／ARM64では、初回接続時に、このpluginの `Cargo.toml` と同じバージョンのリリースバイナリと `SHA256SUMS` をGitHubから取得・検証します。バイナリはHermesが管理するプロファイル専用の `PLUGIN_DATA` に保持され、以降はダウンロードなしで起動します。
+このリポジトリは[Agent Plugins v1.0.0](https://agent-plugins.org/specification)形式のpluginです。ルートの `plugin.json` がpluginを識別し、`mcp.json` がstdio MCPサーバの起動方法を定義します。この形式のstdioに対応するクライアントと、PATHから実行できる `uv` が必要です。
+
+`mcp.json` は `uv run` で [plugin/launch.py](plugin/launch.py) を起動します。この補助スクリプトは設定と認証情報を読み、Rust製の `caldav-mcp` 本体へプロセスを置き換えます。Python 3.11以降と、TLS検証用のCA証明書を提供するcertifiはuvが用意します。起動用の依存関係は `plugin/launch.py.lock` で固定します。Linux x86_64／ARM64では、初回接続時に `Cargo.toml` と同じバージョンの公開バイナリと `SHA256SUMS` をGitHubから取得・検証し、以降は保存済みバイナリを使用します。
+
+クライアントがplugin専用に割り当てる永続ディレクトリ `PLUGIN_DATA` に、次のファイルを配置します。実際の場所はクライアントの案内で確認してください。設定がない状態で起動すると、標準エラーにも `config.toml` の配置先が表示されます。
+
+- `config.toml`: [設定例](examples/config.toml)をコピーし、アカウントやURLを編集します。
+- `credentials.json`: `password_env` または `bearer_token_env` に指定した環境変数名をキーにした認証情報です。
+- `launcher.toml`: 自前のバイナリを使う場合だけ作成する起動設定です。
+
+`credentials.json` の例です。アカウント数や変数名は自由に設定できます。このファイルは本人だけが読み書きできる権限にします。
+
+```json
+{
+  "CALDAV_PERSONAL_PASSWORD": "your-personal-password",
+  "CALDAV_WORK_PASSWORD": "your-work-password"
+}
+```
+
+自前のバイナリを使う場合の `launcher.toml` です。指定時はダウンロードを行わず、Linux以外でもそのOS用のバイナリを使用できます。
+
+```toml
+binary = "/absolute/path/to/caldav-mcp"
+```
+
+`PLUGIN_ROOT` と `PLUGIN_DATA` はAgent Pluginsの標準変数です。設定・認証情報・取得済みバイナリは `PLUGIN_DATA` に置くため、plugin更新後も保持されます。認証情報は起動スクリプトから本体へ環境変数として渡します。設定ファイルの読み込みはこのpluginの起動処理が担当します。
+
+#### Hermes Agentでの導入例
+
+[Agent Plugins対応のHermes Agent](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins/#portable-agent-plugins-v1-packages)では、次のコマンドでインストール・有効化します。
 
 ```sh
 hermes plugins install ROCKTAKEY/caldav-mcp --no-enable
-```
-
-[設定例](examples/config.toml)をpluginのインストール先とは別の場所（例: `~/.config/caldav-mcp/config.toml`）に保存し、アカウントやURLを編集します。使用するHermesプロファイルの `.env` に、設定ファイルの絶対パスと認証情報を設定します。既定プロファイルでは `~/.hermes/.env` です。
-
-```dotenv
-CALDAV_MCP_CONFIG=/home/your-user/.config/caldav-mcp/config.toml
-CALDAV_MCP_CREDENTIALS='{"CALDAV_PERSONAL_PASSWORD":"your-personal-password","CALDAV_WORK_PASSWORD":"your-work-password"}'
-```
-
-`CALDAV_MCP_CREDENTIALS` は、設定の `password_env` または `bearer_token_env` に指定した環境変数名をキーにするJSONオブジェクトです。アカウント数や変数名は自由に設定できます。HermesはMCP子プロセスへ渡す環境変数を制限するため、認証情報はこの変数にまとめて渡します。Desktopのplugin設定にあるcredentials欄からも保存できます。JSONの値に引用符やバックスラッシュを含む場合はJSONとしてエスケープしてください。認証情報を含む `.env` は本人だけが読み書きできる権限にします。
-
-```sh
 hermes plugins enable caldav-mcp
 ```
 
-Hermesのgatewayを再起動して新しいセッションを開くと、`caldav` MCPサーバのツールを利用できます。`config.yaml` にも `mcp_servers.caldav` を設定している場合は、そちらが優先されます。
+このpluginに割り当てられた `PLUGIN_DATA` に上記ファイルを設定し、gatewayを再起動して新しいセッションを開きます。`config.yaml` にも `mcp_servers.caldav` がある場合はそちらが優先されるため、pluginから起動する場合は重複した設定を取り除いてください。
 
-独自ビルドや事前に配置したバイナリを使う場合は、同じ `.env` に `CALDAV_MCP_BINARY=/absolute/path/to/caldav-mcp` を設定します。この場合は自動ダウンロードを行わず、Linux以外でもそのOS用のバイナリを使用できます。起動エラーは標準エラーへ出力されます。リリース取得に失敗する場合は、該当バージョンの配布物の公開とGitHubへの接続を確認してください。
-
-更新は `hermes plugins update caldav-mcp` で行います。接続設定と認証情報はpluginの外に置くため、plugin更新後も利用できます。
+更新は `hermes plugins update caldav-mcp` で行います。インストール・有効化のコマンドや保存先の管理はクライアント固有の機能です。
 
 ### ソースからビルド
 
@@ -159,10 +174,10 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo build --release --locked
 ```
 
-Hermes pluginの起動・認証情報の受け渡し・配布物検証のテストには、Python標準ライブラリだけを使用します。
+pluginの起動・認証情報の受け渡し・配布物検証は、uvでcertifiを用意してテストします。
 
 ```sh
-uv run --no-project --python '>=3.11' -m unittest discover -s tests -p test_hermes_plugin.py
+uv run --no-project --python '>=3.11' --with certifi -m unittest discover -s tests -p test_plugin.py
 ```
 
 既存のRadicale環境を使う場合は `RADICALE_PYTHON` にそのPython実行ファイルを指定します。Radicaleを使わない検証は `cargo test --locked --lib --test mcp_stdio` で実行できます。

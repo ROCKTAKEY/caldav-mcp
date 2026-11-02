@@ -3,6 +3,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -12,7 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-LAUNCHER = ROOT / "hermes" / "launch.py"
+LAUNCHER = ROOT / "plugin" / "launch.py"
 
 
 def load_launcher():
@@ -23,7 +24,7 @@ def load_launcher():
     return module
 
 
-class HermesPluginTests(unittest.TestCase):
+class AgentPluginTests(unittest.TestCase):
     def test_portable_package_launches_with_profile_config_and_credentials(self):
         manifest = json.loads((ROOT / "plugin.json").read_text())
         self.assertEqual(
@@ -43,6 +44,11 @@ class HermesPluginTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory(prefix="caldav plugin ") as directory:
             data = Path(directory)
+            installed = data / "installed plugin"
+            installed.mkdir()
+            shutil.copytree(ROOT / "plugin", installed / "plugin")
+            for name in ("plugin.json", "mcp.json", "Cargo.toml"):
+                shutil.copyfile(ROOT / name, installed / name)
             config = data / "config.toml"
             config.write_text('[[accounts]]\npassword_env = "TEAM_PASSWORD"\n')
             binary = data / "test-server"
@@ -54,24 +60,26 @@ class HermesPluginTests(unittest.TestCase):
                 "'input': sys.stdin.readline().strip()}))\n"
             )
             binary.chmod(0o700)
-            user_env = {
-                "CALDAV_MCP_CONFIG": str(config),
-                "CALDAV_MCP_BINARY": str(binary),
-                "CALDAV_MCP_CREDENTIALS": json.dumps({"TEAM_PASSWORD": "test-secret"}),
-            }
+            (data / "credentials.json").write_text(
+                json.dumps({"TEAM_PASSWORD": "test-secret"})
+            )
+            (data / "launcher.toml").write_text("binary = " + json.dumps(str(binary)))
             env = {
                 "PATH": os.environ["PATH"],
-                "PLUGIN_ROOT": str(ROOT),
+                "PLUGIN_ROOT": str(installed),
                 "PLUGIN_DATA": str(data),
             }
-            for key, value in server["env"].items():
-                self.assertEqual(value, "${" + key + "}")
-                if key in user_env:
-                    env[key] = user_env[key]
-            args = [arg.replace("${PLUGIN_ROOT}", str(ROOT)) for arg in server["args"]]
+            for key, value in server.get("env", {}).items():
+                env[key] = value.replace("${PLUGIN_ROOT}", str(installed)).replace(
+                    "${PLUGIN_DATA}", str(data)
+                )
+            args = [
+                arg.replace("${PLUGIN_ROOT}", str(installed)) for arg in server["args"]
+            ]
             result = subprocess.run(
                 [server["command"], *args],
                 env=env,
+                cwd=installed,
                 input="mcp request\n",
                 text=True,
                 capture_output=True,
@@ -95,7 +103,7 @@ class HermesPluginTests(unittest.TestCase):
                 patch.dict(os.environ, env, clear=True),
                 patch.object(module, "urlopen") as download,
             ):
-                with self.assertRaisesRegex(ValueError, "CALDAV_MCP_CONFIG"):
+                with self.assertRaisesRegex(ValueError, "config.toml"):
                     module.launch()
                 download.assert_not_called()
 
@@ -108,7 +116,7 @@ class HermesPluginTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 1)
             self.assertEqual(result.stdout, "")
-            self.assertIn("CALDAV_MCP_CONFIG", result.stderr)
+            self.assertIn("config.toml", result.stderr)
 
     def test_credentials_reject_invalid_values_without_disclosing_secrets(self):
         module = load_launcher()
