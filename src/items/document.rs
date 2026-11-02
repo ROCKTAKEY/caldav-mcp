@@ -248,7 +248,9 @@ impl Document {
         c.set("CREATED", &dav_time(Utc::now()))?;
         apply(&mut c, patch)?;
         root.children.push(c);
-        Ok(Self { root })
+        let mut doc = Self { root };
+        doc.add_timezones()?;
+        Ok(doc)
     }
     pub fn edit(&self, patch: &ItemPatch, scope: &Scope) -> Result<Self> {
         let mut doc = self.clone();
@@ -273,13 +275,9 @@ impl Document {
                 }
                 apply(&mut doc.root.children[ids[0]], patch)?;
             }
-            Scope::Occurrence { .. } => {
-                return Err(Error::new(
-                    "unsupported",
-                    "Occurrence editing not implemented",
-                ));
-            }
+            Scope::Occurrence { recurrence_id } => doc.edit_occurrence(patch, recurrence_id)?,
         }
+        doc.add_timezones()?;
         Ok(doc)
     }
     pub fn to_ical(&self) -> String {
@@ -302,7 +300,7 @@ fn time_change(c: &mut Component, name: &str, change: &Change<TimeValue>) -> Res
     };
     Ok(())
 }
-fn apply(c: &mut Component, p: &ItemPatch) -> Result<()> {
+pub(super) fn apply(c: &mut Component, p: &ItemPatch) -> Result<()> {
     for (n, v, text) in [
         ("SUMMARY", &p.summary, true),
         ("DESCRIPTION", &p.description, true),
@@ -484,6 +482,9 @@ fn validate(c: &Component) -> Result<()> {
     {
         return Err(Error::input("Invalid class/transparency"));
     }
+    if c.get("RRULE").is_some() {
+        super::recurrence::rules(c)?;
+    }
     for n in ["RDATE", "EXDATE"] {
         for p in c.lines.iter().filter(|p| p.name() == n) {
             for v in p.value().split(',') {
@@ -546,5 +547,47 @@ mod tests {
             )
             .unwrap();
         assert!(!removed.to_ical().contains("DESCRIPTION:"));
+    }
+}
+#[cfg(test)]
+mod recurrence_tests {
+    use super::*;
+    fn recurring() -> Document {
+        Document::create(ComponentKind::Event,"weekly",&serde_json::from_value(json!({"summary":"Weekly","start":{"kind":"zoned","value":"2026-10-26T10:00:00","timezone":"America/New_York"},"end":{"kind":"zoned","value":"2026-10-26T11:00:00","timezone":"America/New_York"},"recurrence_rule":"FREQ=WEEKLY;COUNT=5"})).unwrap()).unwrap()
+    }
+    #[test]
+    fn individual_exception_across_dst_keeps_master_and_duration() {
+        let doc = recurring();
+        assert!(doc.to_ical().contains("BEGIN:VTIMEZONE"));
+        let scope=serde_json::from_value(json!({"kind":"occurrence","recurrence_id":{"kind":"utc","value":"2026-11-02T15:00:00Z"}})).unwrap();
+        let result = doc
+            .edit(
+                &serde_json::from_value(json!({"summary":"Changed"})).unwrap(),
+                &scope,
+            )
+            .unwrap();
+        let exception = result
+            .members()
+            .find(|c| c.get("RECURRENCE-ID").is_some())
+            .unwrap();
+        assert_eq!(
+            exception.time("DTSTART").unwrap().unwrap().instant(),
+            "2026-11-02T15:00:00Z"
+                .parse::<chrono::DateTime<Utc>>()
+                .unwrap()
+        );
+        assert_eq!(
+            exception.time("DTEND").unwrap().unwrap().instant(),
+            "2026-11-02T16:00:00Z"
+                .parse::<chrono::DateTime<Utc>>()
+                .unwrap()
+        );
+        assert!(exception.get("RRULE").is_none());
+        assert_eq!(result.members().count(), 2);
+    }
+    #[test]
+    fn invalid_recurrence_and_due_duration_conflict_are_rejected() {
+        assert!(Document::create(ComponentKind::Event,"bad",&serde_json::from_value(json!({"start":{"kind":"utc","value":"2026-11-02T10:00:00Z"},"recurrence_rule":"FREQ=WEEKLY;INTERVAL=0"})).unwrap()).is_err());
+        assert!(Document::create(ComponentKind::Task,"bad",&serde_json::from_value(json!({"start":{"kind":"date","value":"2026-11-02"},"due":{"kind":"date","value":"2026-11-03"},"duration":"P1D"})).unwrap()).is_err());
     }
 }

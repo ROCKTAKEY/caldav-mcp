@@ -10,6 +10,7 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 clap = { version = "4", features = ["derive"] }
 ical = "0.11"
+jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
 percent-encoding = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rmcp = { version = "1", features = ["server", "transport-io"] }
