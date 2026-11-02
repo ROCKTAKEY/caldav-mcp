@@ -24,6 +24,33 @@
 
 アーカイブと同じリリースの `SHA256SUMS` をダウンロードし、`sha256sum --check --ignore-missing SHA256SUMS` で検証してから展開します。同梱の `config.example.toml` を編集し、MCPホストのコマンドに展開した `caldav-mcp` の絶対パスを指定します。
 
+### Hermes Agentのpluginとして導入
+
+Hermes Agentの[Agent Plugins v1対応](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins/#portable-agent-plugins-v1-packages)を利用します。Hermesの実行環境のPATHに `uv` が必要です。起動用のPython 3.11以降は `uv run` が用意します。Linux x86_64／ARM64では、初回接続時に、このpluginの `Cargo.toml` と同じバージョンのリリースバイナリと `SHA256SUMS` をGitHubから取得・検証します。バイナリはHermesが管理するプロファイル専用の `PLUGIN_DATA` に保持され、以降はダウンロードなしで起動します。
+
+```sh
+hermes plugins install ROCKTAKEY/caldav-mcp --no-enable
+```
+
+[設定例](examples/config.toml)をpluginのインストール先とは別の場所（例: `~/.config/caldav-mcp/config.toml`）に保存し、アカウントやURLを編集します。使用するHermesプロファイルの `.env` に、設定ファイルの絶対パスと認証情報を設定します。既定プロファイルでは `~/.hermes/.env` です。
+
+```dotenv
+CALDAV_MCP_CONFIG=/home/your-user/.config/caldav-mcp/config.toml
+CALDAV_MCP_CREDENTIALS='{"CALDAV_PERSONAL_PASSWORD":"your-personal-password","CALDAV_WORK_PASSWORD":"your-work-password"}'
+```
+
+`CALDAV_MCP_CREDENTIALS` は、設定の `password_env` または `bearer_token_env` に指定した環境変数名をキーにするJSONオブジェクトです。アカウント数や変数名は自由に設定できます。HermesはMCP子プロセスへ渡す環境変数を制限するため、認証情報はこの変数にまとめて渡します。Desktopのplugin設定にあるcredentials欄からも保存できます。JSONの値に引用符やバックスラッシュを含む場合はJSONとしてエスケープしてください。認証情報を含む `.env` は本人だけが読み書きできる権限にします。
+
+```sh
+hermes plugins enable caldav-mcp
+```
+
+Hermesのgatewayを再起動して新しいセッションを開くと、`caldav` MCPサーバのツールを利用できます。`config.yaml` にも `mcp_servers.caldav` を設定している場合は、そちらが優先されます。
+
+独自ビルドや事前に配置したバイナリを使う場合は、同じ `.env` に `CALDAV_MCP_BINARY=/absolute/path/to/caldav-mcp` を設定します。この場合は自動ダウンロードを行わず、Linux以外でもそのOS用のバイナリを使用できます。起動エラーは標準エラーへ出力されます。リリース取得に失敗する場合は、該当バージョンの配布物の公開とGitHubへの接続を確認してください。
+
+更新は `hermes plugins update caldav-mcp` で行います。接続設定と認証情報はpluginの外に置くため、plugin更新後も利用できます。
+
 ### ソースからビルド
 
 Rustのstable toolchainとCargoを使用します（Rust 1.98.1で検証）。リポジトリのルートで実行します。実行時にPythonは必要ありません。
@@ -121,7 +148,7 @@ permit_create_map = True
 
 Radicale 3.9.0を一時起動し、2ユーザーで共有・予定・タスク・空き時間照会を検証しています。MCPのstdio接続についても公式SDKのクライアントで初期化と操作を試験します。実際のローカルLLMによるツール選択精度と、利用者の稼働中サーバとの接続は別途確認が必要です。
 
-試験用Radicaleの環境をリポジトリ内に用意します。Pythonとuvを使うのは、この接続先サーバの準備だけです。
+試験用RadicaleのPython環境を、uvでリポジトリ内に用意します。
 
 ```sh
 uv venv --python 3.15 .venv
@@ -130,6 +157,12 @@ cargo test --locked --all-targets
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo build --release --locked
+```
+
+Hermes pluginの起動・認証情報の受け渡し・配布物検証のテストには、Python標準ライブラリだけを使用します。
+
+```sh
+uv run --no-project --python '>=3.11' -m unittest discover -s tests -p test_hermes_plugin.py
 ```
 
 既存のRadicale環境を使う場合は `RADICALE_PYTHON` にそのPython実行ファイルを指定します。Radicaleを使わない検証は `cargo test --locked --lib --test mcp_stdio` で実行できます。

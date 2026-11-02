@@ -1,19 +1,19 @@
 """Launch the release binary using Hermes' profile-scoped plugin data directory."""
 
-from dataclasses import dataclass
 import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import platform
 import re
 import sys
 import tarfile
 import tempfile
 import tomllib
+from collections.abc import Mapping
+from dataclasses import dataclass
+from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
 from urllib.request import urlopen
 
 
@@ -48,7 +48,9 @@ class Release:
         machines = {"x86_64": "x86_64", "aarch64": "aarch64", "arm64": "aarch64"}
         machine = machines.get(platform.machine())
         if platform.system() != "Linux" or machine is None:
-            raise ValueError("Automatic installation supports Linux x86_64/ARM64; set CALDAV_MCP_BINARY to your own build")
+            raise ValueError(
+                "Automatic installation supports Linux x86_64/ARM64; set CALDAV_MCP_BINARY to your own build"
+            )
         cargo = Path(__file__).resolve().parents[1] / "Cargo.toml"
         version = tomllib.loads(cargo.read_text())["package"]["version"]
         if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?", version):
@@ -56,12 +58,19 @@ class Release:
         return cls(version, f"{machine}-unknown-linux-musl")
 
     def install(self, data: Path) -> Path:
-        package = f"caldav-mcp-{self.target}"
         destination = data / "bin" / self.version / self.target / "caldav-mcp"
         if destination.is_file() and os.access(destination, os.X_OK):
             return destination
-        base = f"https://github.com/ROCKTAKEY/caldav-mcp/releases/download/v{self.version}"
-        print(f"caldav-mcp: downloading v{self.version} ({self.target})", file=sys.stderr)
+        return self.download().install(destination)
+
+    def download(self) -> "VerifiedBinary":
+        package = f"caldav-mcp-{self.target}"
+        base = (
+            f"https://github.com/ROCKTAKEY/caldav-mcp/releases/download/v{self.version}"
+        )
+        print(
+            f"caldav-mcp: downloading v{self.version} ({self.target})", file=sys.stderr
+        )
         with urlopen(f"{base}/SHA256SUMS", timeout=60) as response:
             checksums = response.read().decode()
         expected = None
@@ -73,20 +82,35 @@ class Release:
             raise ValueError("release checksum is missing")
         with urlopen(f"{base}/{package}.tar.gz", timeout=60) as response:
             archive = response.read()
-        if hashlib.sha256(archive).hexdigest() != expected:
+        return VerifiedBinary.from_archive(archive, expected, f"{package}/caldav-mcp")
+
+
+@dataclass(frozen=True)
+class VerifiedBinary:
+    content: bytes
+
+    @classmethod
+    def from_archive(
+        cls, archive: bytes, checksum: str, member_name: str
+    ) -> "VerifiedBinary":
+        if hashlib.sha256(archive).hexdigest() != checksum:
             raise ValueError("release checksum mismatch")
         with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as tar:
-            member = tar.getmember(f"{package}/caldav-mcp")
+            member = tar.getmember(member_name)
             if not member.isfile():
                 raise ValueError("release binary must be a regular file")
-            binary = tar.extractfile(member).read()
+            return cls(tar.extractfile(member).read())
+
+    def install(self, destination: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         # Concurrent Hermes sessions must never observe a partially written executable.
         temporary = None
         try:
-            with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as output:
+            with tempfile.NamedTemporaryFile(
+                dir=destination.parent, delete=False
+            ) as output:
                 temporary = Path(output.name)
-                output.write(binary)
+                output.write(self.content)
                 output.flush()
                 os.fchmod(output.fileno(), 0o700)
             temporary.replace(destination)
@@ -100,13 +124,21 @@ def launch() -> None:
     configured = os.environ.get("CALDAV_MCP_CONFIG", "")
     config = Path(configured).expanduser()
     if not configured or not config.is_absolute() or not config.is_file():
-        raise ValueError("Set CALDAV_MCP_CONFIG to the absolute path of your CalDAV config.toml")
+        raise ValueError(
+            "Set CALDAV_MCP_CONFIG to the absolute path of your CalDAV config.toml"
+        )
     credentials = Credentials.parse(os.environ.get("CALDAV_MCP_CREDENTIALS", "{}"))
     override = os.environ.get("CALDAV_MCP_BINARY")
     if override:
         binary = Path(override).expanduser()
-        if not binary.is_absolute() or not binary.is_file() or not os.access(binary, os.X_OK):
-            raise ValueError("CALDAV_MCP_BINARY must be an absolute path to an executable")
+        if (
+            not binary.is_absolute()
+            or not binary.is_file()
+            or not os.access(binary, os.X_OK)
+        ):
+            raise ValueError(
+                "CALDAV_MCP_BINARY must be an absolute path to an executable"
+            )
     else:
         data = os.environ.get("PLUGIN_DATA")
         if not data or not Path(data).is_absolute():

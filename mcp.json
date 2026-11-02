@@ -3,8 +3,8 @@
   "mcpServers": {
     "caldav": {
       "type": "stdio",
-      "command": "python3",
-      "args": ["${PLUGIN_ROOT}/hermes/launch.py"],
+      "command": "uv",
+      "args": ["run", "--no-project", "--python", ">=3.11", "${PLUGIN_ROOT}/hermes/launch.py"],
       "env": {
         "CALDAV_MCP_CONFIG": "${CALDAV_MCP_CONFIG}",
         "CALDAV_MCP_BINARY": "${CALDAV_MCP_BINARY}",
