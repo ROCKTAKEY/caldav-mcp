@@ -25,7 +25,7 @@ jobs:
       issues: read
       actions: write
     steps:
-      - uses: actions/checkout@v6.1.0
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -34,7 +34,7 @@ jobs:
           toolchain: stable
       - name: Fetch locked dependencies for release preparation
         run: cargo fetch --locked
-      - uses: Songmu/tagpr@v1.21.2
+      - uses: Songmu/tagpr@v1.21.4
         id: tagpr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
