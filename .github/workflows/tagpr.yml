@@ -34,7 +34,7 @@ jobs:
           toolchain: stable
       - name: Fetch locked dependencies for release preparation
         run: cargo fetch --locked
-      - uses: Songmu/tagpr@v1.21.4
+      - uses: Songmu/tagpr@v1.22.0
         id: tagpr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
